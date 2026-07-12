@@ -3,7 +3,6 @@ import { StreamType } from '@mentra/sdk';
 import { Buffer } from 'node:buffer';
 import { AudioPipeline } from '../backend/audioPipelineV4.js';
 import { loadQuran } from '../backend/keywordMatcher.js';
-import { buildMushafIndex } from '../backend/mushafIndex.js';
 import {
   buildGlassesText,
   formatForMentra,
@@ -32,13 +31,11 @@ export type SessionControllerOptions = {
 let quranLoaded = false;
 function ensureQuranLoaded() {
   if (quranLoaded) return;
+  console.log('[Mentra] Loading Quran corpus…');
   loadQuran();
-  try {
-    buildMushafIndex();
-  } catch (e) {
-    console.warn('[Mentra] Mushaf index build failed:', (e as Error).message);
-  }
+  // Skip mushaf index — large and unused by Mentra glasses display path.
   quranLoaded = true;
+  console.log('[Mentra] Quran corpus ready');
 }
 
 export class MentraTaraweehSession {
