@@ -29,6 +29,7 @@ class TaraweehMentraApp extends AppServer {
       packageName: PACKAGE_NAME,
       apiKey: MENTRAOS_API_KEY,
       port: PORT,
+      publicDir: './public',
     });
   }
 
