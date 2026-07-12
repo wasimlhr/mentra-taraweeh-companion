@@ -13,7 +13,10 @@ export type VerseDisplayState = {
   transliteration?: string;
   translation?: string;
   translationGlasses?: string;
+  /** 0–1 fraction or 0–100 percent (legacy mixed) */
   confidence?: number;
+  /** Explicit 0–100 match percent from pipeline */
+  matchPct?: number;
   isCandidate?: boolean;
   candidateScore?: number;
   completedSurah?: number;
@@ -40,6 +43,24 @@ const DEFAULT_OPTS: Required<DisplayOptions> = {
   glassesBottom: 'transliteration',
   appTitle: 'Quran',
 };
+
+/**
+ * Normalize matcher confidence to 0–100.
+ * Pipeline mixes 0–1 scores and 0–100 percents; never trust one scale.
+ */
+export function toMatchPercent(
+  confidence?: number | null,
+  candidateScore?: number | null,
+  matchPct?: number | null,
+): number {
+  const pick = (v: number | null | undefined): number => {
+    if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return 0;
+    if (v <= 1) return Math.round(v * 100); // fraction 0–1
+    if (v <= 100) return Math.round(v); // already percent
+    return 100;
+  };
+  return Math.max(pick(matchPct), pick(confidence), pick(candidateScore));
+}
 
 function clip(s: string, max: number): string {
   if (!s) return '';
@@ -118,12 +139,12 @@ export function buildGlassesText(
   switch (state.mode) {
     case 'SEARCHING': {
       if (state.isCandidate && (state.translation || state.translationGlasses)) {
-        const pct = state.candidateScore || 0;
+        const pct = toMatchPercent(state.confidence, state.candidateScore, state.matchPct);
         return {
-          hdr: `${shortHdr(state, '~ ')}  ${pct}%`,
+          hdr: pct > 0 ? `${shortHdr(state, '~ ')}  ${pct}%` : shortHdr(state, '~ '),
           pages: buildPages(transForGlasses, state.transliteration, opts, 1).map(
             (p, i, arr) =>
-              i === arr.length - 1 ? `${p}\nLocking… ${pct}%` : p,
+              i === arr.length - 1 ? `${p}\nLocking…${pct > 0 ? ` ${pct}%` : ''}` : p,
           ),
         };
       }
@@ -144,7 +165,7 @@ export function buildGlassesText(
     }
 
     case 'LOCKED': {
-      const pct = Math.round((state.confidence || 0) * 100);
+      const pct = toMatchPercent(state.confidence, state.candidateScore, state.matchPct);
       return {
         hdr: pct > 0 ? `${shortHdr(state, '')}  ${pct}%` : shortHdr(state, ''),
         pages: buildPages(transForGlasses, state.transliteration, opts),

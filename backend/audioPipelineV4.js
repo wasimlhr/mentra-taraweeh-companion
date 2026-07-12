@@ -2534,6 +2534,16 @@ export class AudioPipeline {
       ? Math.max(0, (this._nextAdvanceMs || 0) - (Date.now() - this._timerStartedAt))
       : 0;
 
+    // Confidence is stored as mixed 0–1 and 0–100 across modes. Always emit
+    // an explicit 0–100 matchPct so glasses/phone never show "0%" on a good lock.
+    const rawConf = Number(this.state.confidence) || 0;
+    const fromConf = rawConf <= 0 ? 0 : rawConf <= 1 ? Math.round(rawConf * 100) : Math.round(Math.min(100, rawConf));
+    const fromTop = topScore > 0 ? Math.round(Math.min(100, topScore <= 1 ? topScore * 100 : topScore)) : 0;
+    let matchPct = Math.max(fromConf, fromTop, isCandidate ? Math.round(topScore * 100) : 0);
+    if (matchPct > 0) this._lastMatchPct = matchPct;
+    else if (isDisplayable && this._lastMatchPct) matchPct = this._lastMatchPct;
+    if (this.state.mode === 'SEARCHING' && !isCandidate) this._lastMatchPct = 0;
+
     this.onStateUpdate({
       type: 'state',
       state: {
@@ -2546,9 +2556,8 @@ export class AudioPipeline {
         transliteration: lockedVerse?.transliteration,
         translation:     lockedVerse?.translation,
         translationGlasses: lockedVerse?.translationGlasses ?? lockedVerse?.translation,
-        confidence: this.state.confidence <= 1
-          ? this.state.confidence
-          : (this.state.confidence || 0) / 100,
+        confidence: matchPct / 100,
+        matchPct,
         timerMs: this.practiceMode ? undefined : (timerMs || undefined),
         isCandidate:     isCandidate || false,
         candidateScore:  isCandidate ? Math.round(topScore * 100) : undefined,
