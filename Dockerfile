@@ -2,12 +2,12 @@ FROM oven/bun:1.3
 
 WORKDIR /app
 
-# Install root + backend deps before copying full source.
-# Ignore postinstall — it needs backend/ which isn't fully present yet.
+# Ignore root postinstall (needs full backend tree).
 COPY package.json bun.lock ./
 COPY backend/package.json backend/package-lock.json ./backend/
 RUN bun install --frozen-lockfile --ignore-scripts
-RUN cd backend && npm ci --omit=dev
+# oven/bun has no npm — use bun for backend deps too
+RUN cd backend && bun install --omit=dev
 
 COPY . .
 
