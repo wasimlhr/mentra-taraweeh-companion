@@ -83,6 +83,41 @@ export class MentraTaraweehSession {
     this.cleanups = [];
   }
 
+  getLiveSnapshot() {
+    const s = this.lastState;
+    if (!s) {
+      return {
+        active: true,
+        mode: 'SEARCHING',
+        ref: 'Listening…',
+        arabic: '',
+        transliteration: '',
+        translation: '',
+        confidence: null as number | null,
+      };
+    }
+    const name = s.surahName || 'Quran';
+    const ref =
+      s.surah && s.ayah ? `${name} ${s.surah}:${s.ayah}` : name;
+    return {
+      active: true,
+      mode: s.mode || 'SEARCHING',
+      ref,
+      arabic: s.arabic || '',
+      transliteration: s.transliteration || '',
+      translation: s.translationGlasses || s.translation || '',
+      confidence: typeof s.confidence === 'number' ? s.confidence : null,
+    };
+  }
+
+  manualNext() {
+    this.pipeline?.manualAdvance?.();
+  }
+
+  manualPrev() {
+    this.pipeline?.manualPrev?.();
+  }
+
   private attachHandlers() {
     this.cleanups.push(
       this.session.events.onAudioChunk((chunk) => {

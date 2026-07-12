@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Quran Companion</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --card: #121a2b;
+      --text: #e8eefc;
+      --muted: #9aabc9;
+      --accent: #6ee7a8;
+      --line: #243149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px 16px 40px;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; }
+    .pill {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #14301f;
+      color: var(--accent);
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+    .pill.warn { background: #3a2a12; color: #ffd089; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .ref { font-size: 1.05rem; font-weight: 650; margin-bottom: 8px; }
+    .ar {
+      font-size: 1.35rem;
+      line-height: 1.7;
+      direction: rtl;
+      text-align: right;
+      margin: 10px 0;
+    }
+    .meta { color: var(--muted); font-size: 0.92rem; white-space: pre-wrap; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #18233a;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+    }
+    button:active { transform: scale(0.98); }
+    a.settings {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="pill" id="conn">Connecting…</div>
+  <h1>Quran Companion</h1>
+  <p class="sub">Live verse on glasses · change mode / keys in Mentra app Settings</p>
+
+  <div class="card">
+    <div class="ref" id="ref">Listening…</div>
+    <div class="ar" id="ar"></div>
+    <div class="meta" id="tlit"></div>
+    <div class="meta" id="trans"></div>
+    <div class="meta" id="mode"></div>
+  </div>
+
+  <div class="row">
+    <button type="button" id="prev">← Prev ayah</button>
+    <button type="button" id="next">Next ayah →</button>
+  </div>
+
+  <p class="sub" style="margin-top:18px">
+    Tip: Mentra → Quran Companion → Settings for Taraweeh/Practice, surah hint, BYOK.
+  </p>
+
+  <script>
+    const qs = new URLSearchParams(location.search);
+    async function refresh() {
+      try {
+        const r = await fetch('/api/live' + location.search, { credentials: 'include' });
+        const d = await r.json();
+        const conn = document.getElementById('conn');
+        if (d.ok && d.active) {
+          conn.textContent = 'Live · ' + (d.userId || 'session');
+          conn.classList.remove('warn');
+        } else {
+          conn.textContent = d.message || 'Waiting for session…';
+          conn.classList.add('warn');
+        }
+        document.getElementById('ref').textContent = d.ref || 'Listening…';
+        document.getElementById('ar').textContent = d.arabic || '';
+        document.getElementById('tlit').textContent = d.transliteration || '';
+        document.getElementById('trans').textContent = d.translation || '';
+        document.getElementById('mode').textContent = d.mode
+          ? ('Mode: ' + d.mode + (d.confidence != null ? ' · Match ' + Math.round(d.confidence * 100) + '%' : ''))
+          : '';
+      } catch (e) {
+        const conn = document.getElementById('conn');
+        conn.textContent = 'Server unreachable';
+        conn.classList.add('warn');
+      }
+    }
+
+    async function nav(action) {
+      await fetch('/api/' + action + location.search, { method: 'POST', credentials: 'include' });
+      refresh();
+    }
+    document.getElementById('prev').onclick = () => nav('prev');
+    document.getElementById('next').onclick = () => nav('next');
+    refresh();
+    setInterval(refresh, 1500);
+  </script>
+</body>
+</html>

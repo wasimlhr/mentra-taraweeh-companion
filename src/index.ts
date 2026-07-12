@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AppServer, AppSession } from '@mentra/sdk';
+import { AppServer, AppSession, type AuthenticatedRequest } from '@mentra/sdk';
 import { MentraTaraweehSession, subscribeToMic } from './mentraSession.js';
 import {
   readTaraweehSettings,
@@ -24,8 +24,10 @@ const MENTRAOS_API_KEY =
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(ROOT, '..', 'public');
+const WEBVIEW_FILE = path.join(PUBLIC_DIR, 'webview.html');
 
-const activeSessions = new Map<string, MentraTaraweehSession>();
+/** Controllers keyed by Mentra userId for webview live state */
+const sessionsByUser = new Map<string, MentraTaraweehSession>();
 
 class TaraweehMentraApp extends AppServer {
   constructor() {
@@ -34,6 +36,50 @@ class TaraweehMentraApp extends AppServer {
       apiKey: MENTRAOS_API_KEY,
       port: PORT,
       publicDir: PUBLIC_DIR,
+    });
+    this.setupWebviewRoutes();
+  }
+
+  private setupWebviewRoutes() {
+    const expressApp = this.getExpressApp();
+
+    expressApp.get('/webview', (_req, res) => {
+      res.sendFile(WEBVIEW_FILE);
+    });
+
+    expressApp.get('/api/live', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      if (!userId) {
+        return res.json({
+          ok: true,
+          active: false,
+          message: 'Open Quran Companion from Mentra to start a session',
+        });
+      }
+      const controller = sessionsByUser.get(userId);
+      if (!controller) {
+        return res.json({
+          ok: true,
+          active: false,
+          userId,
+          message: 'Session starting…',
+        });
+      }
+      return res.json({ ok: true, userId, ...controller.getLiveSnapshot() });
+    });
+
+    expressApp.post('/api/next', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      const controller = userId ? sessionsByUser.get(userId) : undefined;
+      controller?.manualNext();
+      res.json({ ok: !!controller });
+    });
+
+    expressApp.post('/api/prev', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      const controller = userId ? sessionsByUser.get(userId) : undefined;
+      controller?.manualPrev();
+      res.json({ ok: !!controller });
     });
   }
 
@@ -69,12 +115,15 @@ class TaraweehMentraApp extends AppServer {
       provider: initial.transcriptionProvider,
     });
 
+    const previous = sessionsByUser.get(userId);
+    if (previous) previous.destroy();
+
     const controller = new MentraTaraweehSession(
       session,
       settingsToSessionOptions(initial),
     );
 
-    activeSessions.set(sessionId, controller);
+    sessionsByUser.set(userId, controller);
     controller.start();
 
     const unwatch = watchTaraweehSettings(session, (updated) => {
@@ -84,7 +133,9 @@ class TaraweehMentraApp extends AppServer {
     session.events.onDisconnected(() => {
       unwatch();
       controller.destroy();
-      activeSessions.delete(sessionId);
+      if (sessionsByUser.get(userId) === controller) {
+        sessionsByUser.delete(userId);
+      }
       console.log(`[Mentra] Session ended ${sessionId} user=${userId}`);
     });
   }
