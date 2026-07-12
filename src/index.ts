@@ -106,6 +106,18 @@ class TaraweehMentraApp extends AppServer {
       controller?.manualPrev();
       res.json({ ok: !!controller });
     });
+
+    expressApp.post('/api/mode', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      const controller = userId ? sessionsByUser.get(userId) : undefined;
+      const raw = String(req.body?.mode || req.query?.mode || '').toLowerCase();
+      const mode = raw === 'practice' ? 'practice' : raw === 'taraweeh' ? 'taraweeh' : null;
+      if (!controller || !mode) {
+        return res.status(400).json({ ok: false, message: 'Need active session and mode=practice|taraweeh' });
+      }
+      controller.setReciteMode(mode);
+      res.json({ ok: true, reciteMode: mode });
+    });
   }
 
   protected async onSession(

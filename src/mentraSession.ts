@@ -84,10 +84,14 @@ export class MentraTaraweehSession {
   }
 
   getLiveSnapshot() {
+    const reciteMode = this.opts.practiceMode
+      ? 'practice'
+      : 'taraweeh';
     const s = this.lastState;
     if (!s) {
       return {
         active: true,
+        reciteMode,
         mode: 'SEARCHING',
         ref: 'Listening…',
         arabic: '',
@@ -119,6 +123,7 @@ export class MentraTaraweehSession {
     }
     return {
       active: true,
+      reciteMode,
       mode: s.mode || 'SEARCHING',
       ref,
       arabic: s.arabic || '',
@@ -127,6 +132,20 @@ export class MentraTaraweehSession {
       confidence: typeof s.confidence === 'number' ? s.confidence : null,
       state: safeState,
     };
+  }
+
+  /** Switch Taraweeh ↔ Practice without tearing down the Mentra session. */
+  setReciteMode(mode: 'taraweeh' | 'practice') {
+    const practice = mode === 'practice';
+    this.opts.practiceMode = practice;
+    this.opts.taraweehMode = !practice;
+    if (!this.pipeline) return;
+    if (practice) {
+      this.pipeline.setPracticeMode?.(true);
+    } else {
+      this.pipeline.setTaraweehMode?.(true);
+    }
+    console.log(`[Mentra] Recite mode → ${mode}`);
   }
 
   manualNext() {
@@ -216,16 +235,17 @@ export class MentraTaraweehSession {
 
     if (this.pipeline.setFastMode) this.pipeline.setFastMode(!!this.opts.fastMode);
     if (this.pipeline.setSlowMode) this.pipeline.setSlowMode(!!this.opts.slowMode);
-    if (this.opts.taraweehMode && this.pipeline.setTaraweehMode) {
-      this.pipeline.setTaraweehMode(true);
-      this.pipeline.setPracticeMode?.(false);
-    } else if (this.pipeline.setPracticeMode) {
-      this.pipeline.setPracticeMode(!!this.opts.practiceMode);
+    // Always set both explicitly — pipeline defaults are both false.
+    if (this.opts.practiceMode) {
+      this.pipeline.setPracticeMode?.(true);
+    } else {
+      this.pipeline.setTaraweehMode?.(true);
     }
 
     this.pipeline.start();
     console.log(
-      `[Mentra] Pipeline v4 (provider=${whisperOpts.provider}, shared=${!!whisperOpts.sharedMode}, surah hint=${preferredSurah})`,
+      `[Mentra] Pipeline v4 mode=${this.opts.practiceMode ? 'practice' : 'taraweeh'} ` +
+        `(provider=${whisperOpts.provider}, shared=${!!whisperOpts.sharedMode}, surah hint=${preferredSurah})`,
     );
   }
 

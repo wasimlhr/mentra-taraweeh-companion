@@ -944,8 +944,8 @@ body {
 
   <div class="btn-group" style="margin-top:8px">
     <div class="mv-toggle-group" role="group" aria-label="Recitation mode" style="margin-bottom:8px">
-      <button type="button" class="mv-toggle-btn" id="btnModeTaraweeh" onclick="setReciteMode('taraweeh')">🌙 Taraweeh</button>
-      <button type="button" class="mv-toggle-btn active" id="btnModePractice" onclick="setReciteMode('practice')">📖 Practice</button>
+      <button type="button" class="mv-toggle-btn active" id="btnModeTaraweeh" onclick="setReciteMode('taraweeh')">🌙 Taraweeh</button>
+      <button type="button" class="mv-toggle-btn" id="btnModePractice" onclick="setReciteMode('practice')">📖 Practice</button>
     </div>
     <button id="paceModeBtn" class="mode-btn" onclick="cyclePaceMode()" title="Tap to cycle: Follow mode → Fast recitor → Slow recitor (Taraweeh only)">👣 Follow mode</button>
   </div>
@@ -1220,6 +1220,14 @@ body {
             return;
           }
           setWsPill('ok', 'Mentra: live');
+          if (data.reciteMode === 'practice' || data.reciteMode === 'taraweeh') {
+            if (data.reciteMode !== _reciteMode) {
+              _reciteMode = data.reciteMode;
+              _taraweehMode = data.reciteMode === 'taraweeh';
+              _practiceMode = data.reciteMode === 'practice';
+              _updateReciteModeUI();
+            }
+          }
           var state = data.state || {
             mode: data.mode || 'SEARCHING',
             arabic: data.arabic || '',
@@ -1435,7 +1443,23 @@ body {
       stopPageFlip();
       stopCountdown();
     }
-    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+    if (MENTRA_MODE) {
+      fetch(mentraApiUrl('/api/mode'), {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, mentraAuthHeaders()),
+        credentials: 'include',
+        body: JSON.stringify({ mode: mode }),
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        if (data && data.ok) {
+          if (typeof log === 'function') log('Mentra mode → ' + mode, 'ok');
+          setStatus(mode === 'practice' ? 'Practice mode' : 'Taraweeh mode');
+        } else if (typeof log === 'function') {
+          log('Mode switch failed — use Mentra app Settings', 'warn');
+        }
+      }).catch(function (err) {
+        if (typeof log === 'function') log('Mode switch error: ' + (err && err.message || err), 'err');
+      });
+    } else if (S.ws && S.ws.readyState === WebSocket.OPEN) {
       S.ws.send(JSON.stringify({ type: 'set_taraweeh_mode', enabled: _taraweehMode }));
       S.ws.send(JSON.stringify({ type: 'set_practice_mode', enabled: _practiceMode }));
     }
@@ -3361,7 +3385,7 @@ body {
       setPill('sPillG2', 'ok', 'Mentra');
       var btn = document.getElementById('recordBtn');
       if (btn) {
-        btn.textContent = 'Listening via Mentra';
+        btn.textContent = 'Mentra mic · always on';
         btn.disabled = true;
         btn.classList.add('recording');
       }
@@ -3369,7 +3393,8 @@ body {
       var panel = document.getElementById('matchPanel');
       if (idle) idle.style.display = 'none';
       if (panel) panel.style.display = '';
-      setStatus('Listening via Mentra glasses mic…');
+      setStatus('Listening via Mentra (no phone Start/Stop)');
+      _updateReciteModeUI();
       return;
     }
 

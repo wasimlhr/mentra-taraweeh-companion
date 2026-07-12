@@ -39,14 +39,20 @@ function clampSurah(n: number): number {
 
 export function readTaraweehSettings(session: AppSession): TaraweehSettings {
   const s = session.settings;
-  const reciteRaw = String(s.get('recite_mode', DEFAULTS.reciteMode));
+  const reciteRaw = String(s.get('recite_mode', DEFAULTS.reciteMode)).toLowerCase().trim();
   const surahRaw = parseInt(String(s.get('preferred_surah', '0')), 10);
   const bottomRaw = String(s.get('glasses_bottom', DEFAULTS.glassesBottom));
   const keyModeRaw = String(s.get('key_mode', DEFAULTS.keyMode));
   const providerRaw = String(s.get('transcription_provider', DEFAULTS.transcriptionProvider));
 
+  // Mentra select values should be "practice" | "taraweeh"; accept loose labels too.
+  const reciteMode: TaraweehSettings['reciteMode'] =
+    reciteRaw === 'practice' || reciteRaw.includes('practice')
+      ? 'practice'
+      : 'taraweeh';
+
   return {
-    reciteMode: reciteRaw === 'practice' ? 'practice' : 'taraweeh',
+    reciteMode,
     preferredSurah: clampSurah(surahRaw),
     glassesBottom:
       bottomRaw === 'translation-only' ? 'translation-only' : 'transliteration',
