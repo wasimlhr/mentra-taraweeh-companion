@@ -2,133 +2,3879 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quran Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b1220;
-      --card: #121a2b;
-      --text: #e8eefc;
-      --muted: #9aabc9;
-      --accent: #6ee7a8;
-      --line: #243149;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding: 20px 16px 40px;
-    }
-    h1 { font-size: 1.35rem; margin: 0 0 4px; }
-    .sub { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; }
-    .pill {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #14301f;
-      color: var(--accent);
-      font-size: 0.85rem;
-      margin-bottom: 14px;
-    }
-    .pill.warn { background: #3a2a12; color: #ffd089; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px;
-      margin-bottom: 12px;
-    }
-    .ref { font-size: 1.05rem; font-weight: 650; margin-bottom: 8px; }
-    .ar {
-      font-size: 1.35rem;
-      line-height: 1.7;
-      direction: rtl;
-      text-align: right;
-      margin: 10px 0;
-    }
-    .meta { color: var(--muted); font-size: 0.92rem; white-space: pre-wrap; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-    button {
-      appearance: none;
-      border: 1px solid var(--line);
-      background: #18233a;
-      color: var(--text);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.95rem;
-    }
-    button:active { transform: scale(0.98); }
-    a.settings {
-      color: var(--accent);
-      text-decoration: none;
-      font-size: 0.9rem;
-    }
+/* Even Realities design tokens. FK Grotesk is the brand face (commercial);
+   Inter is the closest free substitute with the same geometric grotesk feel. */
+:root {
+  /* Text colors — Even Realities spec */
+  --tc-highlight: #232323;  /* primary */
+  --tc-1: #232323;          /* body */
+  --tc-2: #7B7B7B;          /* secondary */
+  --tc-3: #9a9a9a;          /* tertiary */
+  --tc-red: #e53935;
+  --tc-green: #2ea44f;
+  --tc-gold: #b7860b;       /* retained for legacy refs */
+  /* Background colors */
+  --bc-highlight: #232323;  /* inverted accent bg */
+  --bc-1: #FFFFFF;          /* page base */
+  --bc-2: #EEEEEE;          /* surface */
+  --bc-3: #e2e2e2;
+  --bc-4: #d4d4d4;
+  --bc-accent: #FEF991;     /* Even Realities accent */
+  --bc-accent-press: #f4ef85;
+  /* Shaded (muted) */
+  --sc-1: #c7c7c7;
+  --sc-2: #e5e5e5;
+  /* Typography — FK Grotesk Neue (fallback: Inter) */
+  --font: "FK Grotesk Neue", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-ar: "Amiri", serif;
+  --track-tight: -0.02em;   /* Even Realities display/title tracking */
+  /* Layout — 20px screen edges per spec, 16px card padding, 4/8/12/16/24 spacing */
+  --screen-margin: 20px;
+  --card-margin: 16px;
+  --r: 8px;
+  --sp: 12px;
+  --shadow: 0 1px 2px rgba(0,0,0,0.04);
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --tc-highlight: #FFFFFF;
+  --tc-1: #FFFFFF;
+  --tc-2: #8A8A8A;
+  --tc-3: #666;
+  --tc-red: #f87171;
+  --tc-green: #4ade80;
+  --bc-highlight: #FFFFFF;
+  --bc-1: #111111;          /* page base */
+  --bc-2: #1A1A1A;          /* surface */
+  --bc-3: #2a2a2a;
+  --bc-4: #3a3a3a;
+  --bc-accent: #FEF991;
+  --bc-accent-press: #f4ef85;
+  --sc-1: #3a3a3a;
+  --sc-2: #2a2a2a;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font);
+  font-weight: 300;            /* FK Light body default */
+  letter-spacing: -0.01em;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--screen-margin);
+  padding-top: max(var(--screen-margin), env(safe-area-inset-top));
+  padding-bottom: max(var(--screen-margin), env(safe-area-inset-bottom));
+  background: var(--bc-2);
+  color: var(--tc-highlight);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 10px;
+}
+.header h1 {
+  font-size: 20px;             /* Large Title — FK 20 Regular */
+  font-weight: 400;
+  color: var(--tc-highlight);
+  letter-spacing: var(--track-tight);
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.version {
+  font-size: 11px;            /* Normal Detail */
+  color: var(--tc-2);
+  font-family: var(--font);
+  letter-spacing: 0;
+}
+#settingsBtn, #themeBtn, #helpBtn {
+  background: var(--bc-1);
+  border: 1px solid var(--bc-4);
+  border-radius: var(--r);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--tc-2);
+  transition: background 0.2s, border-color 0.2s;
+}
+#helpBtn {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font);
+  padding: 6px 11px;
+}
+#settingsBtn:hover, #themeBtn:hover, #helpBtn:hover {
+  background: var(--bc-3);
+}
+
+/* Status bar */
+#status {
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  background: var(--bc-1);
+  border: 1px solid var(--bc-4);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  color: var(--tc-2);
+  text-align: center;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+#status.error,
+#status.err {
+  background: #fef2f2;
+  border-color: var(--tc-red);
+  color: #b91c1c;
+  font-weight: 500;
+}
+[data-theme="dark"] #status.error,
+[data-theme="dark"] #status.err {
+  background: #2a1515;
+  border-color: var(--tc-red);
+  color: #f87171;
+}
+#status.warn {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+[data-theme="dark"] #status.warn {
+  background: #2a2015;
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+#status.result { color: var(--tc-green); }
+
+/* G2 connection — now a pill in the status bar */
+
+/* Verse card */
+#verseCard {
+  background: var(--bc-1);
+  border: 1px solid var(--bc-4);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 10px;
+  min-height: 140px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: background 0.2s, border-color 0.2s;
+}
+#lockedContent {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.verse-pos {
+  font-size: 12px;
+  color: var(--tc-2);
+  font-weight: 500;
+}
+.verse-arabic {
+  font-family: 'Amiri', serif;
+  font-size: 24px;
+  direction: rtl;
+  text-align: right;
+  color: var(--tc-1);
+  line-height: 1.7;
+}
+.verse-divider {
+  height: 1px;
+  background: var(--bc-4);
+}
+
+/* V4: Word Progress Bar */
+.word-progress {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: rgba(76, 175, 80, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+.word-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--tc-2);
+  margin-bottom: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.word-progress-percent {
+  font-weight: 600;
+  color: #4CAF50;
+}
+.word-progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.word-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  transition: width 0.15s ease-out;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+.verse-translit {
+  font-size: 15px;
+  color: var(--tc-1);
+  font-style: italic;
+  line-height: 1.5;
+}
+.verse-translation {
+  font-size: 14px;
+  color: var(--tc-2);
+  line-height: 1.55;
+}
+/* ── Matching Panel (SEARCHING state) ──────────────────────────────────── */
+.verse-searching {
+  display: flex; flex-direction: column; gap: 10px; padding: 4px 0;
+}
+.match-idle {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 24px 0;
+}
+.match-idle .anim {
+  font-size: 28px; color: var(--tc-gold);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.match-idle p { font-size: 14px; color: var(--tc-2); text-align: center; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+/* Audio+window progress row */
+.match-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--tc-2); font-weight: 500;
+}
+.match-audio-bar {
+  height: 3px; background: var(--bc-3); border-radius: 2px;
+  overflow: hidden; margin-bottom: 2px;
+}
+.match-audio-fill {
+  height: 100%; background: var(--tc-gold); border-radius: 2px;
+  transition: width 0.3s ease;
+}
+/* Candidate rows */
+.match-cand {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 10px; border-radius: var(--r);
+  background: var(--bc-1); border: 1px solid var(--bc-3);
+}
+.match-cand.top { border-color: var(--tc-gold); background: var(--bc-accent); }
+.match-cand-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+.match-cand-ref { font-size: 13px; font-weight: 600; color: var(--tc-1); }
+.match-cand-score {
+  font-size: 12px; font-weight: 700; padding: 2px 8px;
+  border-radius: 12px; background: var(--tc-gold); color: #fff;
+}
+.match-cand-score.low { background: var(--bc-4); color: var(--tc-2); }
+.match-cand-arabic {
+  font-family: 'Amiri', serif; font-size: 14px; direction: rtl;
+  text-align: right; color: var(--tc-2); line-height: 1.5;
+}
+/* Lock progress */
+.lock-progress {
+  padding: 8px 10px; border-radius: var(--r);
+  background: var(--bc-3); font-size: 12px;
+}
+.lock-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.lock-wins { display: flex; gap: 4px; align-items: center; }
+.lock-win-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--bc-4); border: 1.5px solid var(--bc-4);
+}
+.lock-win-dot.filled { background: var(--tc-gold); border-color: var(--tc-gold); }
+.lock-stats { font-size: 11px; color: var(--tc-2); }
+.lock-stats span { margin-left: 8px; }
+.lock-msg { font-size: 11px; color: var(--tc-2); margin-top: 4px; font-style: italic; }
+
+/* Confidence */
+#confRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#confTrack {
+  flex: 1;
+  height: 3px;
+  background: var(--bc-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#confFill {
+  height: 100%;
+  background: var(--tc-gold);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+#confPct { font-size: 11px; color: var(--tc-2); min-width: 32px; text-align: right; }
+
+/* Manual ayah nav arrows */
+.verse-nav-row {
+  display: flex; gap: 12px; justify-content: center; padding-top: 8px;
+  border-top: 1px solid var(--bc-4);
+  flex-shrink: 0;
+}
+.nav-arrow-btn {
+  flex: 1; max-width: 120px; padding: 10px 14px; font-size: 14px; font-weight: 600;
+  background: var(--bc-3); color: var(--tc-1); border: 1px solid var(--bc-4);
+  border-radius: var(--r); cursor: pointer; transition: background 0.2s;
+}
+.nav-arrow-btn:hover { background: var(--bc-4); }
+.nav-arrow-btn:active { transform: scale(0.98); }
+
+/* ── System Status Bar ─────────────────────────────────────────────────── */
+#statusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--bc-3);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+  font-size: 10px;
+  color: var(--tc-2);
+  transition: background 0.2s;
+}
+.s-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--bc-4);
+  color: var(--tc-2);
+  white-space: nowrap;
+}
+.s-pill .s-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #aaa;
+  flex-shrink: 0;
+}
+.s-pill.ok   .s-dot { background: #2d9e4f; }
+.s-pill.warn .s-dot { background: #d97706; animation: s-blink 1s ease-in-out infinite; }
+.s-pill.err  .s-dot { background: #e53e3e; }
+.s-pill.info .s-dot { background: #3b82f6; }
+.s-pill.ok   { color: var(--tc-1); }
+.s-pill.warn { background: #fef9e7; color: #92400e; }
+.s-pill.err  { background: #fef2f2; color: #b91c1c; }
+.s-pill.info { background: #eff6ff; color: #1e40af; }
+[data-theme="dark"] .s-pill.warn { background: #3d3010; color: #fbbf24; }
+[data-theme="dark"] .s-pill.err  { background: #3d1515; color: #f87171; }
+[data-theme="dark"] .s-pill.info { background: #152538; color: #93c5fd; }
+[data-theme="dark"] .s-pill.ok   { color: #e8e8e8; }
+@keyframes s-blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Soundwave */
+#waveRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  height: 48px;
+  margin-bottom: 10px;
+}
+.wave-bar {
+  width: 6px;
+  min-height: 4px;
+  border-radius: 3px;
+  background: var(--tc-gold);
+  transition: height 0.08s ease-out;
+}
+
+/* Controls — Even Realities button tokens.
+   Primary CTA: pill-shaped, dark bg, "→" arrow prefix on action text. */
+#recordBtn {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 400;
+  font-family: var(--font);
+  border: none;
+  border-radius: 999px;              /* fully rounded pill */
+  cursor: pointer;
+  background: var(--bc-highlight);
+  color: var(--bc-1);
+  letter-spacing: var(--track-tight);
+  transition: opacity 0.15s, transform 0.1s;
+}
+#recordBtn:active { transform: scale(0.98); }
+#recordBtn.recording { background: var(--tc-red); }
+#recordBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+[data-theme="dark"] #recordBtn { background: #ffffff; color: #0a0a0a; }
+[data-theme="dark"] #recordBtn.recording { background: var(--tc-red); color: #fff; }
+
+/* Secondary outlined pill — matches the outlined button variant in the spec. */
+.mode-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: var(--font);
+  border: 1px solid var(--bc-4);
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--bc-1);
+  color: var(--tc-highlight);
+  letter-spacing: var(--track-tight);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.mode-btn:active { transform: scale(0.98); }
+/* Active state: yellow highlight bg per Even Realities */
+.mode-btn.active {
+  background: var(--bc-accent);
+  border-color: var(--bc-accent);
+  color: var(--tc-highlight);
+}
+#paceModeBtn.active,
+#fastModeBtn.active,
+#taraweehBtn.active,
+#practiceBtn.active,
+#btnModeTaraweeh.active,
+#btnModePractice.active {
+  background: var(--bc-accent);
+  border-color: var(--bc-accent);
+  color: var(--tc-highlight);
+}
+[data-theme="dark"] .mode-btn.active,
+[data-theme="dark"] #paceModeBtn.active,
+[data-theme="dark"] #fastModeBtn.active,
+[data-theme="dark"] #taraweehBtn.active,
+[data-theme="dark"] #practiceBtn.active,
+[data-theme="dark"] #btnModeTaraweeh.active,
+[data-theme="dark"] #btnModePractice.active {
+  color: #232323;
+}
+[data-theme="dark"] .match-cand.top {
+  color: #232323;
+}
+
+/* Taraweeh overlay — shown over verse content during ruku */
+#taraweehOverlay {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 28px 20px;
+  text-align: center;
+}
+#taraweehOverlay.visible { display: flex; }
+.tw-position {
+  font-family: 'Amiri', serif;
+  font-size: 40px;
+  color: var(--tc-1);
+  line-height: 1.2;
+}
+.tw-position-latin {
+  font-size: 14px;
+  color: var(--tc-2);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.tw-rakat {
+  font-size: 13px;
+  color: var(--tc-gold);
+  font-weight: 500;
+}
+.tw-reset-btn {
+  margin-top: 4px;
+  padding: 6px 16px;
+  font-size: 12px;
+  border: 1px solid var(--tc-red);
+  border-radius: 999px;
+  background: var(--bc-1);
+  color: var(--tc-red);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.tw-reset-btn:active { background: #fff0f0; }
+[data-theme="dark"] .tw-reset-btn:active { background: #2a1515; }
+.tw-reset-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-group { margin-bottom: 10px; }
+
+
+/* Settings view */
+#settingsView {
+  display: none;
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 12px;
+}
+.settings-header h2 {
+  font-size: 20px;              /* Large Title — FK 20 Regular */
+  font-weight: 400;
+  letter-spacing: var(--track-tight);
+  color: var(--tc-highlight);
+}
+.back-btn {
+  background: var(--bc-1);
+  border: 1px solid var(--bc-4);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--tc-highlight);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  letter-spacing: var(--track-tight);
+}
+
+/* Even Realities button spec — pill with optional leading arrow.
+   Primary = filled black, Danger = outlined red, Accent = filled yellow. */
+.btn-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-arrow::before {
+  content: "\2192";          /* → */
+  display: inline-block;
+  font-size: 0.95em;
+  line-height: 1;
+}
+.btn-primary {
+  background: #0a0a0a;
+  border: 1px solid #0a0a0a;
+  color: #ffffff;
+}
+.btn-primary:active { background: #2a2a2a; border-color: #2a2a2a; }
+.btn-danger {
+  background: var(--bc-1);
+  border: 1px solid var(--tc-red);
+  color: var(--tc-red);
+}
+.btn-danger:active { background: #fff0f0; }
+[data-theme="dark"] .btn-danger:active { background: #2a1515; }
+/* Spec: "Disabled should be using opacity instead of an overlay." */
+.back-btn:disabled,
+.mode-btn:disabled,
+.toggle-btn:disabled,
+.mv-toggle-btn:disabled,
+.btn-primary:disabled,
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.s-section {
+  font-size: 11px;             /* Normal Detail — FK 11 */
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tc-2);
+  margin: 18px 0 6px;
+}
+.s-card {
+  background: var(--bc-1);
+  border: 1px solid var(--bc-4);
+  border-radius: var(--r);
+  margin-bottom: 6px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.s-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px var(--card-margin);   /* 16px side margin per spec */
+}
+.s-row + .s-row { border-top: 1px solid var(--bc-3); }
+.s-check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.s-check input { width: 18px; height: 18px; }
+.s-label {
+  font-size: 13px;              /* Normal Subtitle — FK 13 Regular */
+  font-weight: 400;
+  letter-spacing: var(--track-tight);
+  color: var(--tc-highlight);
+}
+.s-hint {
+  font-size: 11px;              /* Normal Detail */
+  color: var(--tc-2);
+  font-style: normal;           /* spec doesn't use italic for hints */
+  letter-spacing: var(--track-tight);
+}
+.help-list {
+  margin: 0;
+  padding: 0 0 0 1.1em;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--tc-1);
+  letter-spacing: var(--track-tight);
+}
+.help-list li { margin-bottom: 10px; }
+.help-list li:last-child { margin-bottom: 0; }
+.help-list strong { color: var(--tc-highlight); font-weight: 500; }
+.help-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--tc-2);
+  margin-top: 3px;
+  line-height: 1.45;
+}
+.help-link {
+  margin-top: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--tc-gold);
+  text-decoration: underline;
+  cursor: pointer;
+  letter-spacing: var(--track-tight);
+}
+.s-card input, .s-card select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--bc-4);
+  border-radius: var(--r);
+  background: var(--bc-2);
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--tc-highlight);
+  outline: none;
+  margin-top: 4px;
+  letter-spacing: var(--track-tight);
+}
+.s-card input:focus, .s-card select:focus { border-color: var(--tc-highlight); }
+.s-status { font-size: 12px; color: var(--tc-2); padding: 10px 14px; }
+/* Segmented control per Even Realities "Selector" spec —
+   rounded pill container with fully-rounded inner active pill. */
+.toggle-group {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--bc-3);
+  margin-top: 4px;
+  width: 100%;
+}
+.toggle-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: var(--font);
+  border: none;
+  background: transparent;
+  color: var(--tc-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: center;
+  border-radius: 999px;
+  letter-spacing: var(--track-tight);
+}
+.toggle-btn.active {
+  background: var(--bc-1);
+  color: var(--tc-highlight);
+}
+.toggle-btn:hover:not(.active) { color: var(--tc-highlight); }
+
+/* Main-view segmented control — same pattern as settings, slightly larger. */
+.mv-toggle-group {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bc-3);
+  border-radius: 999px;
+  width: 100%;
+}
+.mv-toggle-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: var(--font);
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tc-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: center;
+  letter-spacing: var(--track-tight);
+  user-select: none;
+}
+.mv-toggle-btn:active { transform: scale(0.98); }
+.mv-toggle-btn.active {
+  background: var(--bc-1);
+  color: var(--tc-highlight);
+}
+.settings-footer {
+  text-align: center;
+  color: var(--tc-2);
+  font-size: 12px;
+  padding: 20px 0;
+  line-height: 1.8;
+}
+.s-life {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  width: fit-content;
+}
+.s-life::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #999;
+}
+.s-life.ready { background: #ecfdf3; color: #166534; }
+.s-life.ready::before { background: #16a34a; }
+.s-life.warming { background: #fffbeb; color: #92400e; }
+.s-life.warming::before { background: #d97706; animation: s-blink 1s ease-in-out infinite; }
+.s-life.asleep { background: #f5f5f4; color: #44403c; }
+.s-life.asleep::before { background: #78716c; }
+.s-life.active { background: #eff6ff; color: #1e40af; }
+.s-life.active::before { background: #3b82f6; }
+.s-life.error { background: #fef2f2; color: #b91c1c; }
+.s-life.error::before { background: #ef4444; }
+.s-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.s-action-btn {
+  background: var(--bc-2);
+  border: 1px solid var(--bc-4);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: var(--tc-1);
+  font-size: 12px;
+  cursor: pointer;
+}
+.s-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
   </style>
 </head>
 <body>
-  <div class="pill" id="conn">Connecting…</div>
-  <h1>Quran Companion</h1>
-  <p class="sub">Live verse on glasses · change mode / keys in Mentra app Settings</p>
 
-  <div class="card">
-    <div class="ref" id="ref">Listening…</div>
-    <div class="ar" id="ar"></div>
-    <div class="meta" id="tlit"></div>
-    <div class="meta" id="trans"></div>
-    <div class="meta" id="mode"></div>
+<!-- Splash screen — shown for ~1.2s on app launch, then fades out -->
+<div id="splashScreen" style="position:fixed;inset:0;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 400ms ease;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <div style="font-size:40px;line-height:1;margin-bottom:16px">☽</div>
+  <div style="font-size:22px;font-weight:600;letter-spacing:0.5px">Quran Companion</div>
+  <div style="font-size:12px;margin-top:8px;opacity:0.6;letter-spacing:1px;text-transform:uppercase">for Even Realities G2</div>
+  <div id="splashVersion" style="position:absolute;bottom:24px;font-size:11px;opacity:0.4;letter-spacing:0.5px"></div>
+</div>
+
+<!-- Main view -->
+<div id="mainView">
+  <div class="header">
+    <h1>☽ Quran Companion</h1>
+    <div class="header-right">
+      <span class="version" id="versionEl">v2.6.5</span>
+      <button id="helpBtn" onclick="showHelp()" title="How it works">?</button>
+      <button id="themeBtn" onclick="toggleTheme()" title="Toggle dark/light mode">◑</button>
+      <button id="settingsBtn" onclick="showSettings()">⚙</button>
+    </div>
   </div>
 
-  <div class="row">
-    <button type="button" id="prev">← Prev ayah</button>
-    <button type="button" id="next">Next ayah →</button>
+  <div id="status">Initializing...</div>
+
+  <!-- System status bar -->
+  <div id="statusBar">
+    <div class="s-pill" id="sPillG2">
+      <span class="s-dot"></span><span class="s-label" id="g2Text">Detecting...</span>
+    </div>
+    <div class="s-pill" id="sPillWs">
+      <span class="s-dot"></span><span class="s-label">Service</span>
+    </div>
+    <div class="s-pill" id="sPillModel" onclick="showModelDebug()" style="cursor:pointer" title="Tap for details">
+      <span class="s-dot"></span><span class="s-label">Model</span>
+    </div>
+    <div class="s-pill" id="sPillConf">
+      <span class="s-dot"></span><span class="s-label">Match: --</span>
+    </div>
+    <div class="s-pill info" id="sPillHeard" style="display:none">
+      <span class="s-dot"></span><span class="s-label" id="heardRef">Heard: --</span>
+    </div>
+    <div class="s-pill" id="sPillShown" style="display:none">
+      <span class="s-dot"></span><span class="s-label" id="shownRef">Shown: --</span>
+    </div>
+    <div class="s-pill" id="sPillPace" style="display:none">
+      <span class="s-dot"></span><span class="s-label">Pace: --</span>
+    </div>
+    <div class="s-pill info" id="sPillTimer" style="display:none">
+      <span class="s-dot"></span><span class="s-label">Next: --</span>
+    </div>
+    <div class="s-pill info" id="sPillEndpoint" style="display:none">
+      <span class="s-dot"></span><span class="s-label">Using HF Public</span>
+    </div>
   </div>
 
-  <p class="sub" style="margin-top:18px">
-    Tip: Mentra → Quran Companion → Settings for Taraweeh/Practice, surah hint, BYOK.
-  </p>
+  <div id="verseCard">
+    <div class="verse-searching" id="searchingContent">
+      <!-- Idle state (before Start is pressed) -->
+      <div class="match-idle" id="matchIdle">
+        <div class="anim">◌</div>
+        <p>Press Start to begin</p>
+        <button type="button" class="help-link" onclick="showHelp()">G2 controls &amp; modes</button>
+      </div>
+      <!-- Live matching panel (shown once audio is flowing) -->
+      <div id="matchPanel" style="display:none">
+        <div class="match-header">
+          <span id="matchAudioLabel">0.0s</span>
+          <span id="matchWindowLabel" style="color:var(--tc-gold)">Window 1/5</span>
+        </div>
+        <div class="match-audio-bar"><div class="match-audio-fill" id="matchAudioFill"></div></div>
+        <div id="matchCands"></div>
+        <div class="lock-progress" id="lockProgress" style="display:none">
+          <div class="lock-row">
+            <div class="lock-wins" id="lockWins"></div>
+            <div class="lock-stats">
+              <span id="lockMargin"></span>
+              <span id="lockCoverage"></span>
+            </div>
+          </div>
+          <div class="lock-msg" id="lockMsg"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Ameen overlay (flashes briefly when Ameen is detected in Taraweeh) -->
+    <div id="ameenOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+      z-index:200; flex-direction:column; align-items:center; justify-content:center;
+      background:rgba(0,0,0,0.75); pointer-events:none;">
+      <div style="font-size:56px; color:#fbbf24; text-shadow:0 0 20px rgba(251,191,36,0.5); letter-spacing:6px; font-weight:bold;">AMEEN</div>
+    </div>
+    <!-- Taraweeh prayer-position overlay (shown instead of verse during ruku) -->
+    <div id="taraweehOverlay">
+      <div class="tw-position" id="twPositionAr">RUKU</div>
+      <div class="tw-position-latin" id="twPositionLatin">Bowing</div>
+      <div class="tw-rakat" id="twRakat">Rak'ah 1</div>
+      <button class="tw-reset-btn" onclick="resetRakat()">Reset Count</button>
+    </div>
 
-  <script>
-    const qs = new URLSearchParams(location.search);
-    async function refresh() {
+    <div id="lockedContent" style="display:none">
+      <div class="verse-pos" id="versePos"></div>
+      <div class="verse-arabic" id="verseArabic"></div>
+      
+      <!-- V4: Word Progress Bar -->
+      <div id="wordProgress" class="word-progress" style="display:none">
+        <div class="word-progress-info">
+          <span id="wordProgressText">0 / 0</span>
+          <span id="wordProgressPercent">0%</span>
+        </div>
+        <div class="word-progress-bar">
+          <div id="wordProgressFill" class="word-progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+      
+      <div class="verse-divider"></div>
+      <div class="verse-translit" id="verseTranslit"></div>
+      <div class="verse-divider"></div>
+      <div class="verse-translation" id="verseTrans"></div>
+    </div>
+    <div id="verseNavRow" class="verse-nav-row" style="display:none">
+      <button type="button" class="nav-arrow-btn" onclick="manualPrevAyah()" title="Previous ayah">← Prev</button>
+      <button type="button" class="nav-arrow-btn" onclick="manualNextAyah()" title="Next ayah">Next →</button>
+    </div>
+  </div>
+
+  <div id="confRow" style="display:none">
+    <div id="confTrack"><div id="confFill"></div></div>
+    <span id="confPct">0%</span>
+  </div>
+
+  <div id="waveRow"></div>
+
+  <button id="recordBtn" disabled>Detecting glasses...</button>
+  <button id="wakeServerMainBtn" class="back-btn btn-primary btn-arrow" style="display:none;margin-top:8px;font-size:13px">Wake server</button>
+
+  <!-- Glasses second-line selector (Arabic / Transliteration / English only) -->
+  <div style="margin-top:12px">
+    <div class="mv-toggle-group" role="group">
+      <button type="button" class="mv-toggle-btn active" id="btnGlassesTranslit" onclick="setGlassesBottom('transliteration')">Transliteration</button>
+      <button type="button" class="mv-toggle-btn" id="btnGlassesEnOnly" onclick="setGlassesBottom('translation-only')">Translation only</button>
+    </div>
+  </div>
+
+  <!-- Transcription provider switch (main screen) -->
+  <div style="margin-top:8px">
+    <div class="mv-toggle-group" role="group" aria-label="Transcription provider">
+      <button type="button" class="mv-toggle-btn active" id="btnProviderGroqMain" onclick="setProvider('groq')">Groq</button>
+      <button type="button" class="mv-toggle-btn" id="btnProviderOpenAIMain" onclick="setProvider('openai')">OpenAI</button>
+    </div>
+  </div>
+
+  <div class="btn-group" style="margin-top:8px">
+    <div class="mv-toggle-group" role="group" aria-label="Recitation mode" style="margin-bottom:8px">
+      <button type="button" class="mv-toggle-btn" id="btnModeTaraweeh" onclick="setReciteMode('taraweeh')">🌙 Taraweeh</button>
+      <button type="button" class="mv-toggle-btn active" id="btnModePractice" onclick="setReciteMode('practice')">📖 Practice</button>
+    </div>
+    <button id="paceModeBtn" class="mode-btn" onclick="cyclePaceMode()" title="Tap to cycle: Follow mode → Fast recitor → Slow recitor (Taraweeh only)">👣 Follow mode</button>
+  </div>
+
+</div>
+
+<!-- Settings view -->
+<div id="settingsView">
+  <div class="settings-header">
+    <button class="back-btn" onclick="hideSettings()">← Back</button>
+    <h2>Settings</h2>
+    <div style="width:60px"></div>
+  </div>
+
+  <div class="s-section">Connection</div>
+  <div class="s-card">
+    <div class="s-status" id="backendStatus">Checking...</div>
+    <div class="s-row" style="margin-top:12px">
+      <span class="s-label">Microphone</span>
+      <div class="toggle-group" role="group">
+        <button type="button" class="toggle-btn active" id="btnG2Mic" onclick="setMicSource('g2')">G2 mic</button>
+        <button type="button" class="toggle-btn" id="btnPhoneMic" onclick="setMicSource('phone')">Phone mic</button>
+      </div>
+      <span class="s-hint" style="margin-top:4px;display:block">Use G2 mic by default, or Phone mic after permission prompt.</span>
+      <span class="s-hint" id="micStatusHint" style="margin-top:6px;display:block">—</span>
+      <button type="button" id="settingMicTest" class="back-btn btn-arrow" style="margin-top:6px;font-size:13px">Request mic permission</button>
+    </div>
+    <div class="s-warn" style="margin-top:8px;padding:10px 14px;background:var(--bc-accent);border-radius:var(--r);font-size:12px;color:var(--tc-1)">
+      <strong>Note:</strong> G2 and Phone mic both work when permission is granted.
+    </div>
+  </div>
+
+  <div class="s-section">Recitation</div>
+  <div class="s-card">
+    <div class="s-row">
+      <span class="s-label">Tracking style</span>
+      <select id="settingPipeline">
+        <option value="v4">V4 (Recommended)</option>
+        <option value="v3">V3 (Compatibility)</option>
+      </select>
+      <span class="s-hint">Only V3 and V4 are supported.</span>
+    </div>
+    <div class="s-row">
+      <span class="s-label">Default Surah</span>
+      <select id="settingSurah"><option value="0">Any Surah</option></select>
+    </div>
+    <div class="s-row">
+      <span class="s-label">Translation</span>
+      <select id="settingLang" onchange="updateTranslationDesc()">
+        <optgroup label="Languages">
+          <option value="">English (built-in)</option>
+          <option value="bn">Bengali</option>
+          <option value="zh">Chinese</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="id">Indonesian</option>
+          <option value="ru">Russian</option>
+          <option value="sv">Swedish</option>
+          <option value="tr">Turkish</option>
+          <option value="ur">Urdu</option>
+        </optgroup>
+      </select>
+      <span class="s-hint" id="translationDesc" style="font-size:11px;display:block;margin-top:4px;font-style:normal;min-height:1.4em"></span>
+      <span class="s-hint" style="font-size:11px;display:block;margin-top:2px">Translations are local app bundles only (no cloud translation fetch).</span>
+      <span class="s-hint" style="font-size:11px;display:block;margin-top:2px">No Urdu, Farsi, Hindi, Bengali, or Arabic on glasses — those show English instead.</span>
+    </div>
+  </div>
+
+  <div class="s-row" id="mobileOnlyHintRow" style="display:none">
+    <span class="s-label">Mobile-only mode</span>
+    <span class="s-hint">Enabled by host env. Phone mic is enforced for this deployment.</span>
+  </div>
+  <div class="s-row" id="wakeServerRow" style="display:none;margin-top:8px">
+    <button type="button" id="wakeServerBtn" class="back-btn btn-primary btn-arrow" style="font-size:13px">Start service now</button>
+    <span class="s-hint" id="wakeServerHint" style="margin-top:6px;display:block">Use this if service is sleeping.</span>
+  </div>
+
+  <div class="s-section">Glasses display</div>
+  <div class="s-card">
+    <div class="s-row">
+      <span class="s-label">Second line on glasses</span>
+      <div class="toggle-group" role="group">
+        <button type="button" class="toggle-btn active" id="btnBottomTranslit" onclick="setGlassesBottom('transliteration')">Transliteration</button>
+      </div>
+      <span class="s-hint" style="font-size:11px;display:block;margin-top:4px">
+        English translation always shows on top. Bottom line is Latin transliteration.
+      </span>
+    </div>
+  </div>
+
+  <div class="s-section">Transcription</div>
+  <div class="s-card">
+    <div class="s-row">
+      <span class="s-label">Mode</span>
+      <div class="toggle-group" role="group" style="display:flex;flex-wrap:wrap;gap:6px">
+        <button type="button" class="toggle-btn active" id="btnModeShared" onclick="setKeyMode('shared')">Free (shared)</button>
+        <button type="button" class="toggle-btn" id="btnModeBYOK" onclick="setKeyMode('byok')">Use my own key</button>
+      </div>
+      <div id="sharedHint" style="margin-top:8px;padding:10px 12px;background:var(--bc-2);border-radius:var(--r);font-size:12px;line-height:1.55;color:var(--tc-1)">
+        <b>Free mode</b> uses a shared key paid for by the developer as <i>sadaka jariya</i>. Each session is capped at <b>~90 minutes</b> of audio to protect the budget. If the shared Groq key is rate-limited, requests automatically fail over to OpenAI.<br><br>
+        For unlimited use, switch to <b>"Use my own key"</b> and paste a free Groq key.
+      </div>
+
+      <div id="byokSection" style="display:none;margin-top:12px">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button type="button" class="toggle-btn active" id="btnProviderGroq" onclick="setProvider('groq')">Groq</button>
+          <button type="button" class="toggle-btn" id="btnProviderOpenAI" onclick="setProvider('openai')">OpenAI</button>
+        </div>
+        <span class="s-hint" style="font-size:11px;display:block;margin-bottom:8px;line-height:1.5">
+          <b>Groq</b> <code>whisper-large-v3-turbo</code> — fast (~300ms), free tier 20 RPM.<br>
+          <b>OpenAI</b> <code>whisper-1</code> — slower (~500ms), no RPM cap, $0.006/min.
+        </span>
+        <div id="groqKeyRow">
+          <input id="settingGroqKey" type="password" placeholder="gsk_... (Groq API key)" autocomplete="off" spellcheck="false" />
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <button type="button" class="back-btn btn-arrow" id="btnGroqTest" onclick="testGroqKey()" style="font-size:13px">Test key</button>
+            <span id="groqTestResult" style="font-size:12px;align-self:center;color:var(--tc-2)">—</span>
+          </div>
+          <span class="s-hint" style="font-size:11px;display:block;margin-top:6px">
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--tc-gold)">Get a free Groq key →</a>
+          </span>
+        </div>
+        <div id="openaiKeyRow" style="margin-top:10px;display:none">
+          <input id="settingOpenAIKey" type="password" placeholder="sk-... (OpenAI API key)" autocomplete="off" spellcheck="false" />
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <button type="button" class="back-btn btn-arrow" id="btnOpenAITest" onclick="testOpenAIKey()" style="font-size:13px">Test key</button>
+            <span id="openaiTestResult" style="font-size:12px;align-self:center;color:var(--tc-2)">—</span>
+          </div>
+          <span class="s-hint" style="font-size:11px;display:block;margin-top:6px">
+            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" style="color:var(--tc-gold)">Get an OpenAI key →</a>
+          </span>
+        </div>
+        <span class="s-hint" style="font-size:11px;display:block;margin-top:10px;color:var(--tc-3)">
+          Key stays on your device. Sent to server only when listening starts.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-section" id="helpSection">Help — G2 &amp; modes</div>
+  <div class="s-card" id="helpCard">
+    <p class="s-hint" style="margin:0 0 12px">Temple and R1 ring share the same gestures (Device APIs). Long-press in the Even app menu opens native exit.</p>
+    <ul class="help-list">
+      <li><strong>Single tap</strong> — next ayah</li>
+      <li><strong>Swipe up / down</strong> — previous / next ayah</li>
+      <li><strong>Double tap (ready screen)</strong> — start listening
+        <span class="help-sub">Double-tap the ring or temple when you see the ready screen.</span>
+      </li>
+      <li><strong>Double tap (while listening)</strong> — stop listening
+        <span class="help-sub">Pauses transcription so you can rest; core workflow for recitation.</span>
+      </li>
+      <li><strong>Double tap (stopped on a verse)</strong> — resume listening</li>
+      <li><strong>Double tap (long ayah)</strong> — next page on glasses when the translation spans multiple screens</li>
+    </ul>
+    <p class="s-hint" style="margin:14px 0 8px">Recitation modes (bottom of main screen):</p>
+    <ul class="help-list">
+      <li><strong>Practice</strong> — shows what you recite; jump any surah. Pause ~2–3s between surahs for a fresh match.</li>
+      <li><strong>Taraweeh</strong> — follows the imam with an auto-advance timer. Use the pace button for fast/slow reciters.</li>
+    </ul>
+    <p class="s-hint" style="margin:14px 0 0">On phone: <strong>Start Listening</strong> begins capture; <strong>Prev / Next</strong> browse ayahs while practicing.</p>
+  </div>
+
+  <div class="s-section">Diagnostics</div>
+  <div class="s-card">
+    <div class="s-row">
+      <span class="s-label">Event & bridge trace</span>
+      <button type="button" class="back-btn btn-arrow" onclick="copyDiagLog()" style="font-size:13px">Copy diagnostic log</button>
+      <span class="s-hint" id="diagCopyHint" style="margin-top:6px;display:block">Last 500 events (ring buffer). Paste into an issue when reporting glasses/UI bugs.</span>
+    </div>
+  </div>
+
+  <div class="settings-footer">
+    <div id="settingsVersion"></div>
+    Built with ♥ for the Ummah<br>by wasimlhr
+  </div>
+</div>
+
+<script>
+(function () {
+  const APP_VERSION = 'v2.6.5-mentra';
+
+  // ─── MentraOS phone webview mode ───────────────────────────────────────────
+  // Reuses Even Hub UI; Mentra handles mic + glasses. This page only polls live state.
+  var MENTRA_MODE = true;
+  var _mentraPollTimer = null;
+  var _mentraLastRef = '';
+
+  function mentraTokens() {
+    var params = new URLSearchParams(window.location.search);
+    var signed = params.get('aos_signed_user_token') || '';
+    var front = params.get('aos_frontend_token') || '';
+    try {
+      if (signed) localStorage.setItem('mentra_signed_token', signed);
+      else signed = localStorage.getItem('mentra_signed_token') || '';
+      if (front) localStorage.setItem('mentra_frontend_token', front);
+      else front = localStorage.getItem('mentra_frontend_token') || '';
+    } catch (_) {}
+    return { signed: signed, front: front };
+  }
+
+  function mentraAuthHeaders() {
+    var t = mentraTokens();
+    var h = { 'Accept': 'application/json' };
+    var token = t.front || t.signed;
+    if (token) h['Authorization'] = 'Bearer ' + token;
+    return h;
+  }
+
+  function mentraApiUrl(path) {
+    var t = mentraTokens();
+    var q = [];
+    if (t.signed) q.push('aos_signed_user_token=' + encodeURIComponent(t.signed));
+    if (t.front) q.push('aos_frontend_token=' + encodeURIComponent(t.front));
+    return path + (q.length ? ('?' + q.join('&')) : '');
+  }
+
+  function mentraConnectLive() {
+    if (_mentraPollTimer) { clearInterval(_mentraPollTimer); _mentraPollTimer = null; }
+    setWsPill('warn', 'Mentra: connecting…');
+    setStatus('Connecting to Mentra session…');
+
+    function poll() {
+      fetch(mentraApiUrl('/api/live'), { headers: mentraAuthHeaders(), credentials: 'include' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || data.ok === false) {
+            setWsPill('err', 'Mentra: error');
+            return;
+          }
+          if (!data.active) {
+            setWsPill('warn', 'Mentra: waiting');
+            setStatus(data.message || 'Open Quran Companion from Mentra…');
+            return;
+          }
+          setWsPill('ok', 'Mentra: live');
+          var state = data.state || {
+            mode: data.mode || 'SEARCHING',
+            arabic: data.arabic || '',
+            transliteration: data.transliteration || '',
+            translation: data.translation || '',
+            confidence: data.confidence
+          };
+          handleServerMsg({ type: 'state', state: state });
+          var label = data.ref || data.mode || 'Listening…';
+          if (label !== _mentraLastRef) {
+            _mentraLastRef = label;
+            setStatus(label);
+          }
+        })
+        .catch(function (err) {
+          setWsPill('err', 'Mentra: offline');
+          setStatus('Live API unreachable', 'error');
+          if (typeof log === 'function') log('Mentra poll: ' + (err && err.message || err), 'err');
+        });
+    }
+
+    poll();
+    _mentraPollTimer = setInterval(poll, 800);
+    S.ws = { readyState: 1, send: function () {}, close: function () {} };
+    S.isRecording = true;
+  }
+
+
+  // ─── State ────────────────────────────────────────────────────────────────
+  const S = {
+    bridge: null,
+    isG2: false,
+    ws: null,
+    isRecording: false,
+    mode: 'SEARCHING',
+    settings: null,
+    mediaStream: null,
+    audioContext: null,
+    scriptProcessor: null,
+    pcmAccum: [],
+    lastSend: 0,
+    waveLevel: 0,
+    waveBars: [],
+    chunkCount: 0,
+    lastWhisper: '',
+    displayRebuilt: false,
+    wakeLock: null,
+    bridgeReady: false,
+    startupPageCreated: false,
+    bridgeCallQueue: Promise.resolve(),
+    isShuttingDown: false,
+    pausedByBackground: false,
+    g2MicPermissionState: 'unknown',
+    unsubs: {
+      evenHubEvent: null,
+      deviceStatus: null,
+      launchSource: null,
+    },
+  };
+
+  // ── Screen Wake Lock + NoSleep audio fallback ────────────────────────────
+  // Primary: Screen Wake Lock API
+  // Fallback: silent looped audio — plays a near-silent tone that keeps the
+  //           audio session alive, which on Android & iOS prevents sleep.
+  var _noSleepAudio = null;
+
+  function _startNoSleepAudio() {
+    if (_noSleepAudio) return;
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var buf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate); // 0.5s silence
+      var src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      // Connect through a gain node set to near-zero (audible if you try hard)
+      var gain = ctx.createGain();
+      gain.gain.value = 0.001;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.start();
+      _noSleepAudio = { ctx: ctx, src: src };
+      log('NoSleep audio started', 'ok');
+    } catch (e) { /* not critical */ }
+  }
+
+  function _stopNoSleepAudio() {
+    if (!_noSleepAudio) return;
+    try { _noSleepAudio.src.stop(); _noSleepAudio.ctx.close(); } catch(e) {}
+    _noSleepAudio = null;
+  }
+
+  async function acquireWakeLock() {
+    // 1. Wake Lock API
+    if ('wakeLock' in navigator) {
       try {
-        const r = await fetch('/api/live' + location.search, { credentials: 'include' });
-        const d = await r.json();
-        const conn = document.getElementById('conn');
-        if (d.ok && d.active) {
-          conn.textContent = 'Live · ' + (d.userId || 'session');
-          conn.classList.remove('warn');
-        } else {
-          conn.textContent = d.message || 'Waiting for session…';
-          conn.classList.add('warn');
+        if (!S.wakeLock) {
+          S.wakeLock = await navigator.wakeLock.request('screen');
+          S.wakeLock.addEventListener('release', function () {
+            S.wakeLock = null;
+            if (S.isRecording) acquireWakeLock(); // re-acquire on wake
+          });
         }
-        document.getElementById('ref').textContent = d.ref || 'Listening…';
-        document.getElementById('ar').textContent = d.arabic || '';
-        document.getElementById('tlit').textContent = d.transliteration || '';
-        document.getElementById('trans').textContent = d.translation || '';
-        document.getElementById('mode').textContent = d.mode
-          ? ('Mode: ' + d.mode + (d.confidence != null ? ' · Match ' + Math.round(d.confidence * 100) + '%' : ''))
-          : '';
-      } catch (e) {
-        const conn = document.getElementById('conn');
-        conn.textContent = 'Server unreachable';
-        conn.classList.add('warn');
+      } catch (e) { /* falls through to audio fallback */ }
+    }
+    // 2. NoSleep audio (works where Wake Lock doesn't — iOS Safari, older Android)
+    _startNoSleepAudio();
+  }
+
+  function releaseWakeLock() {
+    if (S.wakeLock) { try { S.wakeLock.release(); } catch(e) {} S.wakeLock = null; }
+    _stopNoSleepAudio();
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      if (S.isRecording) acquireWakeLock();
+      // Chrome/Android suspends AudioContext when screen off — resume when user returns
+      if (S.audioContext && S.audioContext.state === 'suspended') {
+        S.audioContext.resume().then(function () { log('Audio resumed', 'ok'); }).catch(function () {});
+      }
+      if (_noSleepAudio && _noSleepAudio.ctx && _noSleepAudio.ctx.state === 'suspended') {
+        _noSleepAudio.ctx.resume().catch(function () {});
+      }
+    }
+  });
+
+  // ── Pace cycle: Follow → Fast recitor → Slow recitor (Taraweeh only) ─────
+  var _paceMode = 'follow';  // 'follow' | 'fast' | 'slow'
+  var _fastMode = false;
+  var _slowMode = false;
+
+  var PACE_LABELS = {
+    follow: '\uD83D\uDC63 Follow mode',
+    fast:   '\uD83D\uDC07 Fast recitor',
+    slow:   '\uD83D\uDC22 Slow recitor',
+  };
+
+  function _syncPaceFlags() {
+    _fastMode = _paceMode === 'fast';
+    _slowMode = _paceMode === 'slow';
+  }
+
+  function _applyPaceMode() {
+    _syncPaceFlags();
+    S.settings.paceMode = _paceMode;
+    S.settings.fastMode = _fastMode;
+    S.settings.slowMode = _slowMode;
+    saveSettings();
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify({ type: 'set_fast_mode', enabled: _fastMode }));
+      S.ws.send(JSON.stringify({ type: 'set_slow_mode', enabled: _slowMode }));
+    }
+  }
+
+  window.cyclePaceMode = function () {
+    _paceMode = _paceMode === 'follow' ? 'fast' : _paceMode === 'fast' ? 'slow' : 'follow';
+    _applyPaceMode();
+    _updatePaceButton();
+    log(PACE_LABELS[_paceMode], 'ok');
+  };
+
+  window.toggleFastMode = function () { cyclePaceMode(); };
+
+  function _updatePaceButton() {
+    var btn = document.getElementById('paceModeBtn');
+    if (!btn) return;
+    btn.textContent = PACE_LABELS[_paceMode] || PACE_LABELS.follow;
+    btn.classList.toggle('active', _paceMode !== 'follow');
+  }
+  _updatePaceButton();
+
+  // ── Recitation mode: Taraweeh (timer follow) vs Practice (match what you hear) ─
+  var _reciteMode = 'taraweeh';
+  var _taraweehMode = true;
+  var _practiceMode = false;
+  var _taraweehPos  = 'QIYAM';
+  var _rakatCount   = 0;
+
+  var TW_DISPLAY = {
+    QIYAM: { ar: 'QIYAM',  latin: 'Reciting' },
+    RUKU:  { ar: 'RUKU',   latin: 'Bowing'   },
+    SAJDA: { ar: 'SAJDA',  latin: 'Prostration' },
+  };
+
+  function _updateReciteModeUI() {
+    var tw = document.getElementById('btnModeTaraweeh');
+    var pr = document.getElementById('btnModePractice');
+    if (tw) tw.classList.toggle('active', _reciteMode === 'taraweeh');
+    if (pr) pr.classList.toggle('active', _reciteMode === 'practice');
+    var paceOn = _reciteMode === 'taraweeh';
+    var paceBtn = document.getElementById('paceModeBtn');
+    if (paceBtn) paceBtn.style.display = paceOn ? '' : 'none';
+  }
+
+  window.setReciteMode = function (mode) {
+    if (mode !== 'taraweeh' && mode !== 'practice') return;
+    _reciteMode = mode;
+    _taraweehMode = mode === 'taraweeh';
+    _practiceMode = mode === 'practice';
+    _updateReciteModeUI();
+    if (_practiceMode) {
+      stopPageFlip();
+      stopCountdown();
+    }
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify({ type: 'set_taraweeh_mode', enabled: _taraweehMode }));
+      S.ws.send(JSON.stringify({ type: 'set_practice_mode', enabled: _practiceMode }));
+    }
+    if (_taraweehMode) _updateTaraweehOverlay(_taraweehPos, _rakatCount);
+  };
+
+  window.toggleTaraweeh = function () { setReciteMode(_reciteMode === 'taraweeh' ? 'practice' : 'taraweeh'); };
+  window.togglePractice = function () { setReciteMode('practice'); };
+  _updateReciteModeUI();
+
+  window.resetRakat = function () {
+    _rakatCount = 0; _taraweehPos = 'QIYAM';
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify({ type: 'reset_rakat' }));
+    }
+    _updateTaraweehOverlay('QIYAM', 0);
+  };
+
+  function _updateTaraweehOverlay(position, rakat) {
+    _taraweehPos = position || 'QIYAM';
+    _rakatCount  = rakat || 0;
+    var overlay  = document.getElementById('taraweehOverlay');
+    var locked   = document.getElementById('lockedContent');
+    var searching = document.getElementById('matchPanel');
+
+    var inPrayerPos = _taraweehMode && (_taraweehPos === 'RUKU' || _taraweehPos === 'SAJDA');
+
+    // Show overlay in ruku or sajda; hide verse content
+    if (overlay)  overlay.classList.toggle('visible', inPrayerPos);
+    // Show searching/locked content normally when not in prayer position
+    if (inPrayerPos && locked)   locked.style.display = 'none';
+    if (inPrayerPos) {
+      var nr = document.getElementById('verseNavRow');
+      if (nr) nr.style.display = 'none';
+    }
+
+    var disp = TW_DISPLAY[_taraweehPos] || TW_DISPLAY.QIYAM;
+    var arEl = document.getElementById('twPositionAr');
+    var latEl = document.getElementById('twPositionLatin');
+    var rkEl  = document.getElementById('twRakat');
+    if (arEl)  arEl.textContent  = disp.ar;
+    if (latEl) latEl.textContent = disp.latin;
+    if (rkEl)  rkEl.textContent  = 'Rak\u02bbah ' + _rakatCount;
+  }
+
+  const SETTINGS_KEY = 'qlive_settings';
+  const SEND_INTERVAL = 200;
+  const TARGET_SR = 16000;
+  const MAX_REBUILD_CHARS = 1000;  // rebuildPageContainer limit per G2 SDK docs
+  const MAX_UPGRADE_CHARS = 2000;  // textContainerUpgrade limit
+  const ALLOWED_PIPELINES = new Set(['v3', 'v4']);
+  const ALLOWED_TRANSLATION_LANGS = new Set(['', 'en', 'ur', 'fr', 'es', 'id', 'tr', 'bn', 'zh', 'ru', 'sv']);
+
+  // ─── Persistent storage ───────────────────────────────────────────────────
+  // Browser localStorage is wiped on Even Hub / glasses restart inside the
+  // .ehpk WebView. bridge.setLocalStorage / getLocalStorage is the only
+  // persistent storage on G2. Wrap both behind a sync API backed by an
+  // in-memory cache; bridge is authoritative when present.
+  var Storage = (function () {
+    var cache = new Map();
+    var bridge = null;
+    var KNOWN_KEYS = ['qlive_settings', 'qc_theme', 'taraweeh_session_id'];
+
+    function _readBrowser(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
+    function _writeBrowser(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
+
+    // Pre-seed cache from browser localStorage so synchronous reads have
+    // something during the brief window before bridge hydration finishes.
+    KNOWN_KEYS.forEach(function (k) {
+      var v = _readBrowser(k);
+      if (v != null && v !== '') cache.set(k, v);
+    });
+
+    // Defer setItem writes that arrive before the bridge attaches. On
+    // attach we flush them so any keys saved during the boot window
+    // actually persist. Without this, the session-ID IIFE (top-of-script)
+    // and any "save settings before bridge ready" path were lost on cold
+    // restart even though the bridge was healthy.
+    var pendingWrites = [];
+    function _trace(tag, detail) {
+      try { if (typeof trace === 'function') trace(tag, detail); } catch (_) {}
+      try { console.log('[Storage] ' + tag + (detail ? ' ' + detail : '')); } catch (_) {}
+    }
+
+    return {
+      hasBridge: function () { return !!bridge; },
+
+      // Hydrate from the bridge once it is ready. Bridge values WIN over
+      // browser cache (browser is volatile, bridge is the source of truth).
+      // If the bridge has no value but the browser does, write the browser
+      // value back to the bridge — handles upgrades from pre-bridge versions.
+      attach: function (b) {
+        bridge = b;
+        if (!bridge) {
+          _trace('storage.attach.no-bridge');
+          return Promise.resolve();
+        }
+        var hasGet = typeof bridge.getLocalStorage === 'function';
+        var hasSet = typeof bridge.setLocalStorage === 'function';
+        _trace('storage.attach', 'hasGet=' + hasGet + ' hasSet=' + hasSet);
+        if (!hasGet || !hasSet) return Promise.resolve();
+
+        // Flush any pending writes that happened before bridge attached
+        // (e.g. session-ID generated at module load, settings saved during
+        // the boot async window). These otherwise stay only in browser
+        // localStorage which is wiped on .ehpk WebView restart.
+        var flush = pendingWrites.splice(0).map(function (w) {
+          _trace('storage.flush', w.key);
+          return Promise.resolve(bridge.setLocalStorage(w.key, w.value)).then(
+            function (ok) { _trace('storage.flush.done', w.key + ' ok=' + ok); },
+            function (e) { _trace('storage.flush.err', w.key + ' ' + (e && e.message || e)); }
+          );
+        });
+
+        return Promise.all(flush).then(function () {
+          return Promise.all(KNOWN_KEYS.map(function (k) {
+            return Promise.resolve(bridge.getLocalStorage(k)).then(function (v) {
+              if (v && v !== '') {
+                _trace('storage.hydrate.has', k + ' len=' + v.length);
+                cache.set(k, v);
+                _writeBrowser(k, v);
+              } else if (cache.has(k)) {
+                _trace('storage.hydrate.migrate', k);
+                return Promise.resolve(bridge.setLocalStorage(k, cache.get(k))).then(
+                  function (ok) { _trace('storage.migrate.done', k + ' ok=' + ok); },
+                  function (e) { _trace('storage.migrate.err', k + ' ' + (e && e.message || e)); }
+                );
+              } else {
+                _trace('storage.hydrate.empty', k);
+              }
+            }, function (e) { _trace('storage.hydrate.err', k + ' ' + (e && e.message || e)); });
+          }));
+        });
+      },
+      getItem: function (key) {
+        return cache.has(key) ? cache.get(key) : null;
+      },
+      setItem: function (key, value) {
+        var v = String(value);
+        cache.set(key, v);
+        _writeBrowser(key, v);
+        if (bridge && typeof bridge.setLocalStorage === 'function') {
+          _trace('storage.set', key);
+          Promise.resolve(bridge.setLocalStorage(key, v)).then(
+            function (ok) { _trace('storage.set.done', key + ' ok=' + ok); },
+            function (e) { _trace('storage.set.err', key + ' ' + (e && e.message || e)); }
+          );
+        } else {
+          // Bridge not attached yet — queue for flush on attach so the
+          // write persists across restarts.
+          _trace('storage.queue', key);
+          pendingWrites.push({ key: key, value: v });
+        }
+      },
+    };
+  })();
+  const DEFAULT_HOSTED_PROVIDER = 'hf-public';
+  var _backendStatusInfo = {
+    endpointOnDemandEnabled: false,
+    mobileOnlyMode: false,
+    endpointLifecycle: null,
+  };
+
+  function shouldShowMainWakeButton() {
+    if (!_backendStatusInfo.endpointOnDemandEnabled) return false;
+    var l = _backendStatusInfo.endpointLifecycle || {};
+    var st = l.status || '';
+    // Show wake button when endpoint is likely scaled to zero or unavailable.
+    return st === 'standby' || st === 'error' || st === 'fallback' || st === 'unknown';
+  }
+
+  function refreshMainWakeButton() {
+    var btn = document.getElementById('wakeServerMainBtn');
+    if (!btn) return;
+    btn.style.display = shouldShowMainWakeButton() ? '' : 'none';
+  }
+
+  // ─── Settings ─────────────────────────────────────────────────────────────
+  function defaultWsUrl() {
+    return 'wss://taraweeh.up.railway.app/ws';
+  }
+
+  var DEFAULT_SETTINGS = {
+    lang: '',
+    defaultSurah: '0',
+    pipelineVersion: 'v4',  // V4: Word-level tracking
+    forcePhoneMic: false,
+    fastMode: false,
+    slowMode: false,
+    paceMode: 'follow',
+    keyMode: 'shared',      // 'shared' = use server-held free key; 'byok' = user key
+    groqApiKey: '',         // Groq API key (only used when keyMode='byok')
+    openaiApiKey: '',       // OpenAI API key (only used when keyMode='byok')
+    transcriptionProvider: 'groq',  // BYOK provider: 'groq' or 'openai'
+    glassesBottom: 'transliteration',  // 'transliteration' (Latin text) | 'translation-only'
+  };
+
+  function sanitizePipelineVersion(v) {
+    var normalized = String(v || '').toLowerCase().trim();
+    return ALLOWED_PIPELINES.has(normalized) ? normalized : 'v4';
+  }
+
+  // Stable per-install session ID. Backend uses this to dedup duplicate WS
+  // connections from the SAME install (e.g. reload without close) without
+  // breaking multi-user traffic on shared NAT/carrier IPs.
+  var _clientSessionId = (function () {
+    var KEY = 'taraweeh_session_id';
+    var id = Storage.getItem(KEY);
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID()
+        : ('sid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)));
+      Storage.setItem(KEY, id);
+    }
+    return id;
+  })();
+
+  function sanitizeTranslationLang(lang) {
+    var normalized = String(lang || '').trim();
+    return ALLOWED_TRANSLATION_LANGS.has(normalized) ? normalized : '';
+  }
+
+  function loadSettings() {
+    try {
+      const s = Storage.getItem(SETTINGS_KEY);
+      const saved = s ? JSON.parse(s) : {};
+      const merged = { ...DEFAULT_SETTINGS, ...saved };
+      merged.pipelineVersion = sanitizePipelineVersion(merged.pipelineVersion);
+      merged.lang = sanitizeTranslationLang(merged.lang);
+      // Providers: 'groq' | 'openai'. Anything else (incl. legacy 'whisper') → groq.
+      if (merged.transcriptionProvider !== 'groq' && merged.transcriptionProvider !== 'openai') {
+        merged.transcriptionProvider = 'groq';
+      }
+      delete merged.whisperUnlocked;
+      return merged;
+    } catch { return { ...DEFAULT_SETTINGS, pipelineVersion: 'v4', lang: '' }; }
+  }
+
+  function saveSettings() {
+    Storage.setItem(SETTINGS_KEY, JSON.stringify(S.settings));
+  }
+
+  function getWsUrl() {
+    return defaultWsUrl();
+  }
+
+  // ─── Status Bar ───────────────────────────────────────────────────────────
+  var _audioTimer = null;
+
+  function setPill(id, cls, label) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.className = 's-pill ' + (cls || '');
+    el.querySelector('.s-label').textContent = label;
+  }
+
+  function updatePacePill(pace) {
+    var el = document.getElementById('sPillPace');
+    if (!el) return;
+    el.style.display = '';
+    var wps = pace.wps || 0;
+    var cat = pace.category || '';
+    var trend = pace.trend || 'steady';
+    var arrow = trend === 'accelerating' ? '\u2197' : trend === 'decelerating' ? '\u2198' : '';
+    var cls = cat === 'slow' ? '' : cat === 'normal' ? 'ok' : cat === 'fast' ? 'info' : cat === 'very-fast' ? 'warn' : '';
+    setPill('sPillPace', cls, 'Pace: ' + wps.toFixed(1) + ' w/s ' + arrow);
+  }
+
+  window.nudgePace = function (factor) {
+    if (!S.ws || S.ws.readyState !== WebSocket.OPEN) { log('Nudge: no connection', 'w'); return; }
+    S.ws.send(JSON.stringify({ type: 'pace_nudge', factor: factor }));
+    log('Pace nudge: ' + (factor < 1 ? 'faster' : 'slower') + ' (\u00D7' + factor.toFixed(2) + ')', 'ok');
+  };
+
+  var _modelProvider = '';
+
+  // Rolling log of model events (ready/error/retry) for the debug popup.
+  var _modelEvents = [];
+  function _pushModelEvent(ev) {
+    _modelEvents.push({ t: Date.now(), ...ev });
+    if (_modelEvents.length > 20) _modelEvents.shift();
+  }
+
+  window.showModelDebug = function () {
+    var lines = [];
+    lines.push('Provider: ' + (_modelProvider || '(none)'));
+    lines.push('Groq key set: ' + ((S.settings.groqApiKey || '').trim() ? 'yes' : 'NO'));
+    lines.push('WS: ' + (S.ws && S.ws.readyState === WebSocket.OPEN ? 'open' : 'closed'));
+    lines.push('');
+    lines.push('── Recent events ──');
+    if (_modelEvents.length === 0) {
+      lines.push('(none yet)');
+    } else {
+      _modelEvents.slice().reverse().forEach(function (e) {
+        var age = Math.round((Date.now() - e.t) / 1000);
+        var tag = '[' + e.status + ']';
+        if (e.provider) tag += ' ' + e.provider;
+        var msg = e.message ? ' — ' + e.message : '';
+        lines.push(age + 's ago ' + tag + msg);
+      });
+    }
+    alert(lines.join('\n'));
+  };
+
+  function _providerLabel(p) {
+    return p === 'local' ? 'Local' : p === 'modal' ? 'Modal' : p === 'custom' ? 'Custom' : p === 'dedicated' ? 'whisper-quran' : 'HF Public';
+  }
+
+  function handleSysStatus(s) {
+    if (s.component === 'model') {
+      updateEndpointLifecycleUI(s);
+      if (s.provider) _modelProvider = s.provider;
+      // Record every model status event for the debug popup (tap the pill).
+      _pushModelEvent({ status: s.status || '?', provider: s.provider || '', message: s.message || '', latencyMs: s.latencyMs || 0 });
+      // Collapsed 3-state model: Waking (amber), Ready (green), Down (red).
+      // standby/pending/probing/loading all read as "Waking" from the user's POV —
+      // the server can't transcribe until warm, so the distinction isn't useful on
+      // the main screen (detailed states remain in settings for debugging).
+      switch (s.status) {
+        case 'probing':
+        case 'standby':
+          // 'standby' = endpoint awake but idle, 'probing' = initial health-check
+          setPill('sPillModel', 'ok', 'Ready');
+          if (!S.isRecording) setStatus('Ready to listen — tap Start Listening', 'result');
+          break;
+        case 'loading':
+          // Only 'loading' means a genuine cold-start wake-up is happening.
+          var eta = s.retryIn ? ' ~' + s.retryIn + 's' : '';
+          setPill('sPillModel', 'warn', 'Server waking' + eta + '\u2026');
+          if (!S.isRecording) setStatus('Server waking up' + eta + '\u2026 (takes ~30s on cold start)', 'result');
+          break;
+        case 'pending':
+          // Request in flight — don't change the pill, it's just normal processing.
+          // (Keep whatever state the pill was in.)
+          break;
+        case 'ready':
+          setPill('sPillModel', 'ok', 'Ready');
+          document.getElementById('sPillEndpoint').style.display = 'none';
+          // Clear any "Server warming up…" status text stranded from an earlier
+          // error/warmup phase — we're ready now.
+          if (!S.isRecording) setStatus('Ready to listen — tap Start Listening', 'result');
+          break;
+        case 'fallback':
+          // Backend is supposed to honour the user's selected provider strictly.
+          // If we ever see a fallback status, make it loud so the bug is obvious.
+          _modelProvider = 'fallback';
+          setPill('sPillModel', 'err', 'Wrong provider — fallback');
+          setStatus('Backend fell back to public HF — your selected provider is not being used', 'err');
+          break;
+        case 'error':
+          // Surface transcription errors LOUDLY — even while recording — so users
+          // know why nothing is translating. Prior behaviour hid these behind the
+          // pill only while S.isRecording, which made a dead session look healthy.
+          var provLbl = (s.provider || _modelProvider || 'provider').toUpperCase();
+          var detail = s.message ? (' — ' + s.message) : '';
+          if (s.provider === 'groq' || _modelProvider === 'groq') {
+            if (s.httpStatus === 429 && s.retryAfterMs > 0) {
+              var waitS = Math.ceil(s.retryAfterMs / 1000);
+              setPill('sPillModel', 'warn', 'Groq: rate limit — ' + waitS + 's');
+              setStatus('Groq rate-limited, retry in ' + waitS + 's', 'result');
+            } else if (s.httpStatus === 401 || /invalid.*key|unauthoriz/i.test(s.message || '')) {
+              setPill('sPillModel', 'err', 'Groq: bad API key');
+              setStatus('Groq API key invalid — open Settings to fix', 'err');
+            } else {
+              setPill('sPillModel', 'err', 'Groq: error');
+              setStatus('Groq error' + detail + ' — check key/network', 'err');
+            }
+          } else if (s.provider === 'openai' || _modelProvider === 'openai') {
+            if (s.httpStatus === 401 || /invalid.*key|unauthoriz/i.test(s.message || '')) {
+              setPill('sPillModel', 'err', 'OpenAI: bad API key');
+              setStatus('OpenAI API key invalid — open Settings to fix', 'err');
+            } else {
+              setPill('sPillModel', 'err', 'OpenAI: error');
+              setStatus('OpenAI error' + detail + ' — check key/network', 'err');
+            }
+          } else {
+            setPill('sPillModel', 'err', provLbl + ': error');
+            setStatus(provLbl + ' error' + detail, 'err');
+          }
+          break;
+      }
+    } else if (s.type === 'fast_mode') {
+      if (s.enabled) _paceMode = 'fast';
+      else if (_paceMode === 'fast') _paceMode = 'follow';
+      _syncPaceFlags();
+      _updatePaceButton();
+    } else if (s.type === 'slow_mode') {
+      if (s.enabled) _paceMode = 'slow';
+      else if (_paceMode === 'slow') _paceMode = 'follow';
+      _syncPaceFlags();
+      _updatePaceButton();
+    } else if (s.type === 'taraweeh_mode') {
+      _taraweehMode = !!s.enabled;
+      if (_taraweehMode) { _reciteMode = 'taraweeh'; _practiceMode = false; }
+      _updateReciteModeUI();
+    } else if (s.type === 'practice_mode' || s.type === 'verse_hold_mode') {
+      _practiceMode = !!s.enabled;
+      if (_practiceMode) { _reciteMode = 'practice'; _taraweehMode = false; }
+      _updateReciteModeUI();
+      if (_practiceMode) { stopPageFlip(); stopCountdown(); }
+    } else if (s.type === 'session_quota') {
+      // Shared-mode per-session usage cap: warn at 80%, hard-stop at 100%.
+      // Surface as the main status banner so user can switch to BYOK.
+      if (s.status === 'error') {
+        setStatus(s.message || 'Free-session limit reached. Add your own Groq key in Settings.', 'err');
+        if (typeof log === 'function') log('Quota exceeded \u2014 recording will pause until BYOK is configured', 'err');
+      } else if (s.status === 'warn') {
+        setStatus(s.message || 'Approaching free-session limit', 'warn');
+      }
+    } else if (s.component === 'audio') {
+      // Audio heartbeat — keep pill alive but don't show RMS
+      clearTimeout(_audioTimer);
+      _audioTimer = setTimeout(function () {
+        setPill('sPillConf', 'warn', 'Match: idle');
+      }, 13000);
+    }
+  }
+
+  function setWsPill(cls, label) { setPill('sPillWs', cls, label); }
+
+  // ─── Surah names ──────────────────────────────────────────────────────────
+  const SURAHS = ['','Al-Fatiha','Al-Baqarah','Ali Imran','An-Nisa','Al-Maida','Al-Anam','Al-Araf','Al-Anfal','At-Tawbah','Yunus','Hud','Yusuf','Ar-Rad','Ibrahim','Al-Hijr','An-Nahl','Al-Isra','Al-Kahf','Maryam','Ta-Ha','Al-Anbiya','Al-Hajj','Al-Muminun','An-Nur','Al-Furqan','Ash-Shuara','An-Naml','Al-Qasas','Al-Ankabut','Ar-Rum','Luqman','As-Sajda','Al-Ahzab','Saba','Fatir','Ya-Sin','As-Saffat','Sad','Az-Zumar','Ghafir','Fussilat','Ash-Shura','Az-Zukhruf','Ad-Dukhan','Al-Jathiya','Al-Ahqaf','Muhammad','Al-Fath','Al-Hujurat','Qaf','Adh-Dhariyat','At-Tur','An-Najm','Al-Qamar','Ar-Rahman','Al-Waqia','Al-Hadid','Al-Mujadila','Al-Hashr','Al-Mumtahina','As-Saf','Al-Jumuah','Al-Munafiqun','At-Taghabun','At-Talaq','At-Tahrim','Al-Mulk','Al-Qalam','Al-Haqqa','Al-Maarij','Nuh','Al-Jinn','Al-Muzzammil','Al-Muddaththir','Al-Qiyama','Al-Insan','Al-Mursalat','An-Naba','An-Naziat','Abasa','At-Takwir','Al-Infitar','Al-Mutaffifin','Al-Inshiqaq','Al-Buruj','At-Tariq','Al-Ala','Al-Ghashiya','Al-Fajr','Al-Balad','Ash-Shams','Al-Layl','Ad-Duha','Ash-Sharh','At-Tin','Al-Alaq','Al-Qadr','Al-Bayyina','Az-Zalzala','Al-Adiyat','Al-Qaria','At-Takathur','Al-Asr','Al-Humaza','Al-Fil','Quraysh','Al-Maun','Al-Kawthar','Al-Kafirun','An-Nasr','Al-Masad','Al-Ikhlas','Al-Falaq','An-Nas'];
+
+  function populateSurahs() {
+    ['settingSurah'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el.options.length > 1) return;
+      for (var i = 1; i <= 114; i++) {
+        var o = document.createElement('option');
+        o.value = i; o.textContent = i + '. ' + SURAHS[i];
+        el.appendChild(o);
+      }
+    });
+  }
+
+  // ─── Logging ──────────────────────────────────────────────────────────────
+  function log(msg, type) {
+    var ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    var prefix = type === 'err' ? '[ERR]' : type === 'ok' ? '[OK]' : type === 'w' ? '[WARN]' : '[LOG]';
+    console.log(prefix + ' [' + ts + '] ' + msg);
+  }
+
+  function setStatus(msg, type) {
+    var el = document.getElementById('status');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = type || '';
+  }
+
+  // Diagnostic ring buffer — last 500 timestamped entries for bridge calls + ring events.
+  // Export via window.dumpDiag() in console or the "Copy Diag" settings button.
+  var _diagLog = [];
+  function trace(tag, detail) {
+    var t = performance.now().toFixed(1);
+    var entry = t + ' ' + tag + (detail ? ' ' + detail : '');
+    _diagLog.push(entry);
+    if (_diagLog.length > 500) _diagLog.shift();
+    console.log('[trace] ' + entry);
+  }
+  window.dumpDiag = function () { return _diagLog.join('\n'); };
+  window.copyDiagLog = function () {
+    var text = _diagLog.join('\n') || '(empty)';
+    var hint = document.getElementById('diagCopyHint');
+    function ok() { if (hint) hint.textContent = 'Copied ' + _diagLog.length + ' entries to clipboard.'; }
+    function fail(e) { if (hint) hint.textContent = 'Copy failed — dumped to console instead. ' + (e && e.message || ''); console.log(text); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, fail);
+    } else { fail(new Error('clipboard API unavailable')); }
+  };
+
+  function queueBridgeCall(name, fn) {
+    trace('bridge.enqueue', name);
+    var started = 0;
+    S.bridgeCallQueue = S.bridgeCallQueue
+      .then(function () { started = performance.now(); trace('bridge.start', name); return fn(); })
+      .then(function (r) { trace('bridge.done', name + ' +' + (performance.now() - started).toFixed(0) + 'ms'); return r; })
+      .catch(function (err) {
+        trace('bridge.err', name + ' ' + (err && err.message ? err.message : String(err)));
+        log(name + ' failed: ' + (err && err.message ? err.message : String(err)), 'err');
+      });
+    return S.bridgeCallQueue;
+  }
+
+  // ─── G2 display (startup + runtime containers) ────────────────────────────
+  // Startup uses 3 text containers + 1 image container. Runtime keeps text updates.
+  // Canvas: 576x288. Header: 40px, body: 248px.
+  // Body: borderWidth=0, paddingLength=2 → maximize usable width (no scroll bar, more text per line)
+  var G2_HDR_H   = 40;
+  var G2_VER_W   = 72;   // version container width (snug for "v4.7.1")
+  var G2_HDR_W   = 576 - G2_VER_W;  // title takes the rest
+  var G2_VER_X   = G2_HDR_W;  // version flush to right edge
+  var G2_BODY_Y  = G2_HDR_H;
+  var G2_BODY_H  = 288 - G2_HDR_H;
+
+  // Even Device APIs — EventSourceType (ring vs temple), DeviceConnectType
+  var EVENT_SRC_RING = 2;       // TOUCH_EVENT_FROM_RING
+  var EVENT_SRC_GLASSES_R = 1;  // TOUCH_EVENT_FROM_GLASSES_R
+  var EVENT_SRC_GLASSES_L = 3;  // TOUCH_EVENT_FROM_GLASSES_L
+  var _ringConnected = false;
+
+  function _startupBodyText() {
+    if (_ringConnected) {
+      return 'Ring connected.\nDouble-tap ring or temple to start.\nRecite to begin.';
+    }
+    return 'G2 ready.\nDouble-tap temple to start.\nRecite to begin.';
+  }
+
+  function _updateG2StatusPill() {
+    if (!S.isG2) return;
+    setPill('sPillG2', 'ok', _ringConnected ? 'G2 + Ring ready' : 'G2 ready');
+  }
+
+  function refreshGlassesWelcomeText() {
+    if (!S.bridge || !S.startupPageCreated) return;
+    var body = _startupBodyText();
+    queueBridgeCall('refresh-welcome', function () {
+      return S.bridge.textContainerUpgrade({ containerID: 3, containerName: 'body', content: body });
+    });
+  }
+
+  function _readEventSource(event, ev) {
+    if (ev && ev.eventSource != null) return ev.eventSource;
+    if (event.textEvent && event.textEvent.eventSource != null) return event.textEvent.eventSource;
+    if (event.sysEvent && event.sysEvent.eventSource != null) return event.sysEvent.eventSource;
+    return null;
+  }
+
+  function noteRingInput(event, ev) {
+    var src = _readEventSource(event, ev);
+    if (src !== EVENT_SRC_RING && src !== 2) return;
+    if (_ringConnected) return;
+    _ringConnected = true;
+    _updateG2StatusPill();
+    refreshGlassesWelcomeText();
+    log('Ring input detected (eventSource)', 'ok');
+  }
+
+  function applyDeviceInfo(info) {
+    if (!info) return;
+    var model = (info.model || '').toString().toLowerCase();
+    var connected = info.status && (
+      (typeof info.status.isConnected === 'function' && info.status.isConnected()) ||
+      info.status.connectType === 'connected'
+    );
+    if ((model === 'ring1' || model === 'ring') && connected) {
+      _ringConnected = true;
+    }
+  }
+
+  async function refreshDeviceConnectionFromBridge() {
+    if (!S.bridge) return;
+    try {
+      var info = await S.bridge.getDeviceInfo();
+      var wasRing = _ringConnected;
+      applyDeviceInfo(info);
+      if (wasRing !== _ringConnected) {
+        _updateG2StatusPill();
+        refreshGlassesWelcomeText();
+      }
+    } catch (_) {}
+  }
+
+  function setupDeviceApiMonitors() {
+    if (!S.bridge) return;
+    refreshDeviceConnectionFromBridge().then(function () {
+      _updateG2StatusPill();
+      refreshGlassesWelcomeText();
+    });
+    if (S.unsubs.deviceStatus) {
+      try { S.unsubs.deviceStatus(); } catch (_) {}
+      S.unsubs.deviceStatus = null;
+    }
+    S.unsubs.deviceStatus = S.bridge.onDeviceStatusChanged(function (status) {
+      trace('device.status', (status.connectType || '') + ' sn=' + (status.sn || '').slice(0, 8));
+      if (status.connectType === 'connected') refreshDeviceConnectionFromBridge();
+    });
+    if (S.unsubs.launchSource) {
+      try { S.unsubs.launchSource(); } catch (_) {}
+      S.unsubs.launchSource = null;
+    }
+    S.unsubs.launchSource = S.bridge.onLaunchSource(function (source) {
+      log('Launch source: ' + source, 'ok');
+      // Per Device APIs: glasses-menu launch should (re)initialize glasses UI.
+      if (source === 'glassesMenu' && S.isG2) glassesStartup();
+    });
+  }
+
+  function _startupTextContainers() {
+    return [
+      { containerID: 1, containerName: 'hdr',
+        xPosition: 0, yPosition: 0, width: G2_HDR_W, height: G2_HDR_H,
+        isEventCapture: 0,
+        borderWidth: 1, borderColor: 5, borderRadius: 0, paddingLength: 2,
+        content: appTitleHdr() },
+      { containerID: 2, containerName: 'ver',
+        xPosition: G2_VER_X, yPosition: 0, width: G2_VER_W, height: G2_HDR_H,
+        isEventCapture: 0,
+        borderWidth: 1, borderColor: 5, borderRadius: 0, paddingLength: 2,
+        content: appVersionHdr() },
+      { containerID: 3, containerName: 'body',
+        xPosition: 0, yPosition: G2_BODY_Y, width: 576, height: G2_BODY_H,
+        isEventCapture: 1,
+        borderWidth: 0, borderColor: 5, borderRadius: 0, paddingLength: 2,
+        content: _startupBodyText() },
+    ];
+  }
+
+  function glassesStartup() {
+    if (!S.bridge) return;
+    S.startupPageCreated = false;
+    // Per SDK: createStartUpPageContainer may be called ONLY ONCE ever; all
+    // subsequent page ops must use rebuildPageContainer. On reload/reconnect
+    // the first call returns non-zero (container already exists) — fall
+    // through to rebuildPageContainer instead of throwing + needing recovery.
+    queueBridgeCall('createStartUpPageContainer', function () {
+      return S.bridge.createStartUpPageContainer({
+        containerTotalNum: 3,
+        textObject: _startupTextContainers(),
+      }).then(function (result) {
+        // Protobuf zero-omission: success code 0 arrives as undefined.
+        var code = (result == null) ? 0 : result;
+        if (code === 0) {
+          S.startupPageCreated = true;
+          S.displayRebuilt = false;
+          log('G2: startup page created', 'ok');
+          refreshGlassesWelcomeText();
+          return;
+        }
+        log('G2: startup container already exists (code=' + code + ') — rebuilding', 'w');
+        return S.bridge.rebuildPageContainer({
+          containerTotalNum: 3,
+          textObject: _startupTextContainers(),
+        }).then(function () {
+          S.startupPageCreated = true;
+          S.displayRebuilt = true;   // just rebuilt — ready for text upgrades
+          log('G2: startup page rebuilt', 'ok');
+          refreshGlassesWelcomeText();
+        });
+      });
+    });
+  }
+
+  // Some SDK/firmware combos can reject startup container creation intermittently.
+  // If that happens, force a plain text rebuild so the glasses never stay blank.
+  function recoverStartupIfBlank() {
+    if (!S.bridge || S.startupPageCreated) return;
+    queueBridgeCall('recover-startup-rebuild', function () {
+      return S.bridge.rebuildPageContainer({
+        containerTotalNum: 3,
+        textObject: _startupTextContainers(),
+      }).then(function () {
+        S.startupPageCreated = true;
+        S.displayRebuilt = true;
+        log('G2: startup recovery rebuild applied', 'ok');
+        refreshGlassesWelcomeText();
+      });
+    });
+  }
+
+  // glassesUpdate receives { hdr, body } object from buildGlassesText
+  // Full rebuild on first use or ayah change; textContainerUpgrade for countdown (lightweight).
+  // Full rebuild every 500ms overwhelmed BLE — display lagged. Use upgrade for countdown ticks.
+  function glassesUpdate(display) {
+    if (!S.bridge) return;
+    if (typeof display === 'string') display = { hdr: '', body: display };
+    queueBridgeCall('glassesUpdate', function () {
+      if (!S.displayRebuilt) {
+        var hdrContent  = (display.hdr  || '').slice(0, 200);
+        var bodyContent = (display.body || '').slice(0, MAX_REBUILD_CHARS - 200);
+        return S.bridge.rebuildPageContainer({
+          containerTotalNum: 3,
+          textObject: [
+            { containerID: 1, containerName: 'hdr',
+              xPosition: 0, yPosition: 0, width: G2_HDR_W, height: G2_HDR_H,
+              isEventCapture: 0,
+              borderWidth: 1, borderColor: 5, borderRadius: 0, paddingLength: 2,
+              content: hdrContent },
+            { containerID: 2, containerName: 'ver',
+              xPosition: G2_VER_X, yPosition: 0, width: G2_VER_W, height: G2_HDR_H,
+              isEventCapture: 0,
+              borderWidth: 1, borderColor: 5, borderRadius: 0, paddingLength: 2,
+              content: appVersionHdr() },
+            { containerID: 3, containerName: 'body',
+              xPosition: 0, yPosition: G2_BODY_Y, width: 576, height: G2_BODY_H,
+              isEventCapture: 1,
+              borderWidth: 0, borderColor: 5, borderRadius: 0, paddingLength: 2,
+              content: bodyContent },
+          ],
+        }).then(function () {
+          S.displayRebuilt = true;
+        });
+      }
+      var hdrContent2  = (display.hdr  || '').slice(0, 500);
+      var bodyContent2 = (display.body || '').slice(0, MAX_UPGRADE_CHARS - 500);
+      return S.bridge.textContainerUpgrade({ containerID: 1, containerName: 'hdr', content: hdrContent2 }).then(function () {
+        return S.bridge.textContainerUpgrade({ containerID: 3, containerName: 'body', content: bodyContent2 });
+      });
+    });
+  }
+
+  // ─── Glasses text helpers (from g2-quran-app reference) ─────────────────
+  var G2_CHARS = 55;   // chars per line — tested safe width for G2 display
+  var G2_BODY_LINES = 10; // lines per page — conservative to prevent scroll bar
+  var G2_DIV = '-'.repeat(G2_CHARS);  // single line — hyphen renders as one line (box char looked double)
+
+  function appTitleHdr() { return 'Quran Companion'; }
+  function appVersionHdr() { return APP_VERSION; }
+
+  function clip(s, n) { return (s || '').length > n ? s.slice(0, n - 1) + '\u2026' : (s || ''); }
+
+  function wrapText(s, n) {
+    if (!s) return [''];
+    var words = s.split(/\s+/), lines = [], cur = '';
+    words.forEach(function (w) {
+      if ((cur ? cur + ' ' + w : w).length <= n) { cur = cur ? cur + ' ' + w : w; }
+      else { if (cur) lines.push(cur); cur = w; }
+    });
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  }
+
+  // Paginate translation first, then transliteration. Translation fills the screen;
+  // when user scrolls to next page, transliteration appears (on last page if it fits, else its own page).
+  function buildPages(translation, transliteration, reserveLines) {
+    var maxLines = G2_BODY_LINES - (reserveLines || 0);
+    var transLines = wrapText(translation || '', G2_CHARS);
+    var bottomMode = (S.settings && S.settings.glassesBottom) || 'transliteration';
+    // 'transliteration' mode shows Latin text. 'translation-only' shows English translation alone.
+    // Long-ayah exception: when the ENGLISH translation alone already spans
+    // more than half the screen, suppress transliteration even if the user
+    // picked that mode — translation is more useful than scrolling past it
+    // to see Latin letters you won't finish reading during recitation.
+    var longAyah = transLines.length > Math.floor(maxLines / 2);
+    var effectiveTransliteration = (bottomMode === 'transliteration' && !longAyah) ? transliteration : '';
+    var tlitLines  = effectiveTransliteration ? wrapText(effectiveTransliteration, G2_CHARS) : [];
+    var tlitBlock  = tlitLines.length > 0 ? [G2_DIV].concat(tlitLines) : [];
+    var tlitCost   = tlitBlock.length;
+
+    if (transLines.length + tlitCost <= maxLines) {
+      return [transLines.concat(tlitBlock).join('\n')];
+    }
+
+    var pages = [];
+    for (var i = 0; i < transLines.length; i += maxLines) {
+      pages.push(transLines.slice(i, i + maxLines).join('\n'));
+    }
+
+    var last = pages[pages.length - 1].split('\n');
+    if (last.length + tlitCost <= maxLines) {
+      pages[pages.length - 1] = pages[pages.length - 1] + '\n' + tlitBlock.join('\n');
+    } else if (tlitCost > 0) {
+      pages.push(tlitBlock.join('\n'));
+    }
+    return pages;
+  }
+
+  // ─── Countdown timer (updates header with remaining seconds) ─────────────
+  var _cdStartMs    = 0;
+  var _cdDurationMs = 0;
+  var _cdTimer      = null;
+  var _cdLastHdr    = '';
+  var _cdLastBody   = '';
+  var _cdTickCount  = 0;
+
+  function startCountdown(durationMs, baseHdr, body) {
+    if (_practiceMode) { stopCountdown(); return; }
+    stopCountdown();
+    _cdStartMs    = Date.now();
+    _cdDurationMs = durationMs;
+    _cdLastHdr    = baseHdr;
+    _cdLastBody   = body || '';
+    _cdTickCount  = 0;
+    _tickCountdown();
+    _cdTimer = setInterval(_tickCountdown, 500);
+  }
+
+  function _tickCountdown() {
+    var remaining = Math.max(0, _cdDurationMs - (Date.now() - _cdStartMs));
+    var secs = Math.ceil(remaining / 1000);
+    var tag = secs > 0 ? secs + 's' : '';
+    var padded = _cdLastHdr;
+    if (tag) {
+      var avail = Math.max(1, G2_CHARS - _cdLastHdr.length - tag.length);
+      padded = _cdLastHdr + ' '.repeat(avail) + tag;
+    }
+    if (S.isG2 && S.bridge) {
+      _cdTickCount++;
+      if (_cdTickCount % 4 === 1) {
+        S.displayRebuilt = false;
+        glassesUpdate({ hdr: padded, body: _cdLastBody });
+      }
+    }
+    // Update app timer pill
+    var pill = document.getElementById('sPillTimer');
+    if (pill) {
+      pill.style.display = secs > 0 ? '' : 'none';
+      var lbl = pill.querySelector('.s-label');
+      if (lbl) lbl.textContent = 'Next: ' + (secs > 0 ? secs + 's' : '');
+    }
+    if (remaining <= 0) stopCountdown();
+  }
+
+  function stopCountdown() {
+    if (_cdTimer) { clearInterval(_cdTimer); _cdTimer = null; }
+    var pill = document.getElementById('sPillTimer');
+    if (pill) pill.style.display = 'none';
+  }
+
+  // ─── Glasses text builder ─────────────────────────────────────────────────
+  // Returns { hdr, pages } for the 2-container G2 layout.
+  // pages is an array of body strings. For short ayahs it's 1 page.
+  // For long ayahs, translation paginates across multiple full screens,
+  // transliteration goes on the last page.
+  // Header: surah/ayah left, confidence % right.
+  function buildGlassesText(state) {
+    var transForGlasses = state.translationGlasses ?? state.translation;
+    switch (state.mode) {
+      case 'SEARCHING':
+        if (state.isCandidate && (state.translation || state.translationGlasses)) {
+          var cName = state.surahName ? clip(state.surahName, 14) : 'Quran';
+          var cRef  = cName + ' ' + state.surah + ':' + state.ayah;
+          var cPct  = 'Match: ' + (state.candidateScore || 0) + '%';
+          var cPad  = Math.max(1, G2_CHARS - cRef.length - cPct.length - 3);
+          var cHdr  = '\u25CB ' + cRef + ' '.repeat(cPad) + cPct;
+          var cPages = buildPages(transForGlasses, state.transliteration, 1);
+          var lockDots = (state._lockingDots !== undefined) ? '.'.repeat(state._lockingDots) : '\u2026';
+          cPages[cPages.length - 1] += '\nAuto locking' + lockDots + ' ' + (state.candidateScore || 0) + '%';
+          return { hdr: cHdr, pages: cPages };
+        }
+        if (state.completedSurah) {
+          var sName = state.completedSurahName || ('Surah ' + state.completedSurah);
+          return { hdr: '\u2713 ' + clip(sName, 24) + ' complete', pages: ['Listening for next surah\u2026'] };
+        }
+        // Practice: keep current verse on glasses while listening for next (fresh surah jump).
+        if (state.userSearching && (state.translation || state.translationGlasses)) {
+          var uName = state.surahName ? clip(state.surahName, 14) : 'Quran';
+          var uRef  = uName + ' ' + state.surah + ':' + state.ayah;
+          var uPct  = 'Match: ' + Math.round((state.confidence || 0) * 100) + '%';
+          var uPad  = Math.max(1, G2_CHARS - uRef.length - uPct.length - 3);
+          var uHdr  = '\u25CF ' + uRef + ' '.repeat(uPad) + uPct;
+          var uPages = buildPages(transForGlasses, state.transliteration);
+          uPages[uPages.length - 1] += '\nListening for next verse\u2026';
+          return { hdr: uHdr, pages: uPages };
+        }
+        return { hdr: 'Listening', pages: ['\nSearching\u2026'] };
+
+      case 'LOCKED': {
+        var lName = state.surahName ? clip(state.surahName, 14) : 'Quran';
+        var lRef  = lName + ' ' + state.surah + ':' + state.ayah;
+        var lPct  = 'Match: ' + Math.round((state.confidence || 0) * 100) + '%';
+        var lPad  = Math.max(1, G2_CHARS - lRef.length - lPct.length - 3);
+        var lHdr  = '\u25CF ' + lRef + ' '.repeat(lPad) + lPct;
+        return { hdr: lHdr, pages: buildPages(transForGlasses, state.transliteration) };
+      }
+
+      case 'PAUSED': {
+        var pName = state.surahName ? clip(state.surahName, 14) : 'Quran';
+        var pRef  = pName + ' ' + (state.surah ? state.surah + ':' + state.ayah : '');
+        var pHdr  = '\u23F8 PAUSED  ' + pRef;
+        var transForPaused = state.translationGlasses ?? state.translation;
+        var pBody = transForPaused || 'Double-tap to resume';
+        var pPages = buildPages(pBody, state.transliteration, 2);
+        pPages[pPages.length - 1] += '\n' + G2_DIV + '\nPAUSED \u2014 double-tap to resume';
+        return { hdr: pHdr, pages: pPages };
+      }
+
+      case 'RESUMING': {
+        // Keep showing the last verse — don't flash "Resynchronizing" on the glasses
+        if (state.translation || state.translationGlasses || state.transliteration) {
+          var rName = state.surahName ? clip(state.surahName, 14) : 'Quran';
+          var rRef  = rName + ' ' + state.surah + ':' + state.ayah;
+          var rHdr  = '\u21BB ' + rRef;
+          return { hdr: rHdr, pages: buildPages(transForGlasses, state.transliteration) };
+        }
+        var rName2 = state.surahName ? clip(state.surahName, 14) : 'Quran';
+        return { hdr: '\u21BB ' + rName2, pages: ['Listening\u2026'] };
+      }
+
+      case 'LOST':
+        return { hdr: '\u26A0 Signal Lost', pages: ['Resume recitation.'] };
+    
+      default:
+        return { hdr: appTitleHdr(), pages: ['Ready.'] };
+    }
+  }
+
+  // Build header string with optional page indicator (placed inline, before countdown)
+  function _hdrWithPage(baseHdr, pageIdx, totalPages) {
+    if (totalPages <= 1) return baseHdr;
+    return baseHdr + ' ' + (pageIdx + 1) + '/' + totalPages;
+  }
+
+  // Show a specific page from a multi-page display
+  function showGlassesPage(display, pageIdx) {
+    var total = display.pages.length;
+    var idx = Math.min(pageIdx, total - 1);
+    var hdr = _hdrWithPage(display.hdr, idx, total);
+    glassesUpdate({ hdr: hdr, body: display.pages[idx] });
+    return hdr;
+  }
+
+  function mirrorManualNavOnGlasses() {
+    if (!S.isG2) return;
+    var st = S._lastGlassesState || { mode: 'SEARCHING' };
+    var d = buildGlassesText(st);
+    stopPageFlip();
+    stopCountdown();
+    S.displayRebuilt = false;
+    showGlassesPage(d, 0);
+  }
+
+  // ─── Auto page-flip timer ─────────────────────────────────────────────────
+  var _pageDisplay  = null;
+  var _pageIdx      = 0;
+  var _pageTimer    = null;
+  var _pageMs       = 0;
+
+  function startPageFlip(display, totalMs) {
+    if (_practiceMode) { stopPageFlip(); return; }
+    stopPageFlip();
+    _pageDisplay = display;
+    _pageIdx     = 0;
+    var total    = display.pages.length;
+    _pageMs      = total > 1 ? Math.floor(totalMs / total) : totalMs;
+    var baseHdr  = showGlassesPage(display, 0);
+    startCountdown(_pageMs, baseHdr, display.pages[0] || '');
+    if (total > 1) {
+      _pageTimer = setInterval(function () {
+        _pageIdx++;
+        if (_pageIdx >= total) { stopPageFlip(); return; }
+        var h = showGlassesPage(_pageDisplay, _pageIdx);
+        startCountdown(_pageMs, h, _pageDisplay.pages[_pageIdx] || '');
+      }, _pageMs);
+    }
+  }
+
+  function stopPageFlip() {
+    if (_pageTimer) { clearInterval(_pageTimer); _pageTimer = null; }
+    _pageDisplay = null;
+    _pageIdx = 0;
+  }
+
+  // ─── Searching dots animation (G2) ────────────────────────────────────────
+  var _searchingDotsTimer = null;
+  var _searchingDotsIdx   = 0;
+  var _glassesSessionId   = 0;   // bumped each startListening — forces glasses resync
+
+  function startSearchingDots() {
+    stopSearchingDots();
+    _searchingDotsIdx = 0;
+    _searchingDotsTimer = setInterval(function () {
+      if (!S.isRecording || !S.isG2 || !S.bridge) return;
+      if (S._lastGlassesState && (S._lastGlassesState.isCandidate || S._lastGlassesState.mode === 'LOCKED')) {
+        // Stale searching animation must not block verse display (common after stop→start).
+        stopSearchingDots();
+        S.displayRebuilt = false;
+        showGlassesPage(buildGlassesText(S._lastGlassesState), 0);
+        return;
+      }
+      _searchingDotsIdx = (_searchingDotsIdx + 1) % 4;
+      var dots = '.'.repeat(_searchingDotsIdx);
+      glassesUpdate({ hdr: 'Listening', body: '\nSearching' + dots });
+    }, 400);
+  }
+
+  function stopSearchingDots() {
+    if (_searchingDotsTimer) { clearInterval(_searchingDotsTimer); _searchingDotsTimer = null; }
+  }
+
+  var _lockingDotsTimer = null;
+  var _lockingDotsIdx   = 0;
+
+  function startLockingDots() {
+    if (_lockingDotsTimer) return;
+    _lockingDotsIdx = 0;
+    _lockingDotsTimer = setInterval(function () {
+      if (!S.isRecording || !S.isG2 || !S.bridge) return;
+      var st = S._lastGlassesState;
+      if (!st || !st.isCandidate || st.mode === 'LOCKED') { stopLockingDots(); return; }
+      _lockingDotsIdx = (_lockingDotsIdx + 1) % 4;
+      var stateWithDots = { ...st, _lockingDots: _lockingDotsIdx };
+      showGlassesPage(buildGlassesText(stateWithDots), 0);
+    }, 400);
+  }
+
+  function stopLockingDots() {
+    if (_lockingDotsTimer) { clearInterval(_lockingDotsTimer); _lockingDotsTimer = null; }
+  }
+
+  // ─── Phone UI updater ─────────────────────────────────────────────────────
+  function updatePhoneUI(state, whisper) {
+    S.mode = state.mode;
+
+    var searching = document.getElementById('searchingContent');
+    var locked = document.getElementById('lockedContent');
+    var confRow = document.getElementById('confRow');
+
+    // Show verse panel when LOCKED, RESUMING, or when we have a strong candidate (>=40%), or user searching
+    var showVerse = state.mode === 'LOCKED' || state.mode === 'RESUMING'
+      || (state.isCandidate && state.arabic)
+      || (state.mode === 'SEARCHING' && state.userSearching && state.arabic);
+
+    // In taraweeh ruku/sajda, hide verse content (overlay takes over)
+    if (_taraweehMode && (_taraweehPos === 'RUKU' || _taraweehPos === 'SAJDA')) {
+      searching.style.display = 'none';
+      locked.style.display = 'none';
+      var navRow = document.getElementById('verseNavRow');
+      if (navRow) navRow.style.display = 'none';
+      return;
+    }
+    // Coming out of ruku/sajda — hide overlay
+    var twOverlay = document.getElementById('taraweehOverlay');
+    if (twOverlay) twOverlay.classList.remove('visible');
+
+    if (showVerse) {
+      // Reset match panel so it's fresh when we return to SEARCHING
+      if (state.mode === 'LOCKED') resetMatchPanel && resetMatchPanel();
+      searching.style.display = 'none';
+      locked.style.display = 'flex';
+      // V4: Show word progress only in LOCKED mode; fill from state so "Word X / Y" appears immediately (and after reconnect)
+      var wordProg = document.getElementById('wordProgress');
+      if (wordProg) {
+        wordProg.style.display = (state.mode === 'LOCKED') ? 'block' : 'none';
+        if (state.mode === 'LOCKED' && state.totalWords > 0) {
+          var textSpan = document.getElementById('wordProgressText');
+          var percentSpan = document.getElementById('wordProgressPercent');
+          var fillDiv = document.getElementById('wordProgressFill');
+          var idx = Math.min(state.wordIndex != null ? state.wordIndex : 0, state.totalWords - 1);
+          var currentWord = Math.min(idx + 1, state.totalWords);
+          if (textSpan) textSpan.textContent = currentWord + ' / ' + state.totalWords;
+          var progress = (idx + 1) / state.totalWords;
+          if (percentSpan) percentSpan.textContent = Math.round(progress * 100) + '%';
+          if (fillDiv) fillDiv.style.width = (progress * 100) + '%';
+        }
+      }
+      locked.style.flexDirection = 'column';
+      locked.style.gap = '10px';
+      var navRow = document.getElementById('verseNavRow');
+      if (navRow) navRow.style.display = 'flex';
+
+      // Visual indicator: candidate vs locked vs user searching
+      var versePosEl = document.getElementById('versePos');
+      var isCandidate = state.isCandidate;
+      var isUserSearching = state.userSearching;
+      var scoreLabel = isCandidate ? ' \u007e' + (state.candidateScore || '') + '%' : (isUserSearching ? ' (Auto locking…)' : '');
+      versePosEl.textContent =
+        (state.surahName || '') + '  \u2022  Ayah ' + (state.ayah || '') + ' of ' + (state.ayahTotal || '?') + scoreLabel;
+      versePosEl.style.opacity = (isCandidate || isUserSearching) ? '0.75' : '1';
+
+      document.getElementById('verseArabic').textContent = state.arabic || '';
+      document.getElementById('verseTranslit').textContent = state.transliteration || '';
+      document.getElementById('verseTrans').textContent = state.translation || '';
+
+      // Dim the verse slightly while it's a candidate or user searching (still confirming)
+      var verseCard = locked.querySelector ? locked.querySelector('.verse-card') : null;
+      if (verseCard) verseCard.style.opacity = (isCandidate || isUserSearching) ? '0.75' : '1';
+
+      // confidence from backend is 0-1 float
+      var conf = isCandidate
+        ? (state.candidateScore || 0)
+        : Math.round((state.confidence || 0) * 100);
+      document.getElementById('confFill').style.width = conf + '%';
+      document.getElementById('confPct').textContent = conf + '%';
+      confRow.style.display = (state.mode === 'LOCKED' || isCandidate || isUserSearching) ? 'flex' : 'none';
+
+      var statusLabel = (isCandidate || state.userSearching)
+        ? 'Auto locking… ' + (state.surahName || '') + ' \u2022 ' + (state.ayah || '') + (isCandidate ? ' (' + (state.candidateScore || '') + '%)' : '')
+        : (state.surahName || '') + ' \u2022 ' + (state.ayah || '');
+      setStatus(statusLabel, (isCandidate || state.userSearching) ? '' : 'result');
+    } else {
+      locked.style.display = 'none';
+      var navRow = document.getElementById('verseNavRow');
+      if (navRow) navRow.style.display = (state.mode === 'SEARCHING' && S.isRecording) ? 'flex' : 'none';
+      searching.style.display = 'flex';
+      confRow.style.display = 'none';
+
+      // Show match panel when recording, idle state when not
+      var matchIdle  = document.getElementById('matchIdle');
+      var matchPanel = document.getElementById('matchPanel');
+      if (matchIdle && matchPanel) {
+        if (S.isRecording) {
+          matchIdle.style.display = 'none';
+          matchPanel.style.display = '';
+        } else {
+          matchIdle.style.display = '';
+          matchPanel.style.display = 'none';
+        }
+      }
+
+      // Show surah-complete banner if a surah just finished
+      var tipEl = document.getElementById('searchingTip');
+      if (state.completedSurah) {
+        var cName = state.completedSurahName || ('Surah ' + state.completedSurah);
+        tipEl.dir = 'ltr';
+        tipEl.textContent = '\u2713 ' + cName + ' complete \u2014 searching for next verse\u2026';
+        tipEl.style.color = '#4caf50';
+      } else if (whisper) {
+        // Only show whisper feedback if it's a real (non-noise) transcription
+        tipEl.dir = 'rtl';
+        tipEl.style.color = '';
+        tipEl.textContent = whisper.slice(0, 60) + ' \u2014 no match';
+      } else {
+        tipEl.textContent = '';
+      }
+
+      if (state.mode === 'PAUSED') setStatus('Paused \u2014 ' + (state.nonQuranType || 'waiting'));
+      else if (state.mode === 'LOST') setStatus('Audio lost \u2014 resume recitation');
+      else setStatus('Listening...');
+    }
+  }
+
+  // ─── Soundwave ────────────────────────────────────────────────────────────
+  function initWave() {
+    var row = document.getElementById('waveRow');
+    if (!row || row.children.length) { S.waveBars = Array.from(row.children); return; }
+    S.waveBars = [];
+    for (var i = 0; i < 20; i++) {
+      var b = document.createElement('div');
+      b.className = 'wave-bar'; b.style.height = '4px';
+      row.appendChild(b); S.waveBars.push(b);
+    }
+  }
+
+  function updateWave(rms) {
+    // G2 mic RMS ~0.001–0.002 vs PC ~0.05–0.3 — need strong boost for visible meter
+    var gain = S.isG2 ? 120 : 3;
+    S.waveLevel = Math.max(S.waveLevel * 0.7, Math.min(1, rms * gain));
+    var h = Math.max(4, Math.round(4 + S.waveLevel * 44));
+    var ph = Date.now() / 80;
+    S.waveBars.forEach(function (b, i) {
+      b.style.height = Math.round(h * (0.5 + 0.5 * Math.sin(ph + i * 0.45))) + 'px';
+    });
+  }
+
+  // ─── WebSocket ────────────────────────────────────────────────────────────
+  var _wsReconnectTimer = null;
+  var _wsPingTimer = null;
+
+  function _cancelReconnect() {
+    if (_wsReconnectTimer) { clearTimeout(_wsReconnectTimer); _wsReconnectTimer = null; }
+  }
+
+  function _startWsPing() {
+    _stopWsPing();
+    // Send a lightweight ping every 20s so server keepalive doesn't terminate us
+    // (G2 Android WebView may throttle automatic pong responses)
+    _wsPingTimer = setInterval(function () {
+      if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+        S.ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 20000);
+  }
+
+  function _stopWsPing() {
+    if (_wsPingTimer) { clearInterval(_wsPingTimer); _wsPingTimer = null; }
+  }
+
+  function _closeWsSilently(ws) {
+    // Detach handlers before closing so onclose doesn't fire a reconnect
+    if (!ws) return;
+    _stopWsPing();
+    ws.onopen = ws.onclose = ws.onerror = ws.onmessage = null;
+    try { ws.close(); } catch (_) {}
+  }
+
+  function connectWS() {
+    if (MENTRA_MODE) {
+      mentraConnectLive();
+      return;
+    }
+    _cancelReconnect();
+    _closeWsSilently(S.ws);
+    setWsPill('warn', 'Service: connecting…');
+    S.ws = new WebSocket(getWsUrl());
+    S.ws.binaryType = 'arraybuffer';
+    S.ws.onopen = function () {
+      setWsPill('ok', 'Service: online');
+      log('WS connected', 'ok');
+      _startWsPing();
+    };
+    S.ws.onmessage = function (ev) {
+      if (typeof ev.data !== 'string') return;
+      var msg;
+      try { msg = JSON.parse(ev.data); } catch (_) { return; }
+      handleServerMsg(msg);
+    };
+    S.ws.onclose = function () {
+      _stopWsPing();
+      setWsPill('err', 'Service: reconnecting…');
+      _wsReconnectTimer = setTimeout(connectWS, 1000);
+    };
+    S.ws.onerror = function () {
+      setWsPill('err', 'Service: offline');
+    };
+  }
+
+  function resetMatchPanel() {
+    document.getElementById('matchAudioLabel').textContent = '0.0s';
+    document.getElementById('matchWindowLabel').textContent = 'Window 1/5';
+    document.getElementById('matchAudioFill').style.width = '0%';
+    document.getElementById('matchCands').innerHTML = '';
+    document.getElementById('lockProgress').style.display = 'none';
+  }
+
+  function updateMatchPanel(msg) {
+    var audioSec = msg.audioSec || 0;
+    var maxSec = 30;
+    document.getElementById('matchAudioLabel').textContent = audioSec.toFixed(1) + 's';
+    document.getElementById('matchAudioFill').style.width = Math.min(100, (audioSec / maxSec) * 100) + '%';
+
+    var w = msg.lockProgress && msg.lockProgress.wins !== undefined
+      ? 'Window ' + Math.min(msg.lockProgress.wins + 1, 5) + '/5' : '';
+    if (w) document.getElementById('matchWindowLabel').textContent = w;
+
+    // Render candidate rows
+    var cands = msg.candidates || [];
+    var html = '';
+    cands.slice(0, 3).forEach(function (c, i) {
+      var score = Math.round((c.score || 0) * (c.score <= 1 ? 100 : 1));
+      var isTop = i === 0;
+      var scoreCls = score >= 60 ? '' : 'low';
+      html += '<div class="match-cand' + (isTop ? ' top' : '') + '">'
+        + '<div class="match-cand-header">'
+        + '<span class="match-cand-ref">' + (i === 0 ? '▶ ' : '    ') + c.surah + ':' + c.ayah + '</span>'
+        + '<span class="match-cand-score ' + scoreCls + '">' + score + '%</span>'
+        + '</div>'
+        + (c.arabic ? '<div class="match-cand-arabic">' + c.arabic.substring(0, 50) + (c.arabic.length > 50 ? '…' : '') + '</div>' : '')
+        + '</div>';
+    });
+    if (!cands.length) {
+      html = '<div class="match-cand"><div class="match-cand-header"><span class="match-cand-ref" style="color:var(--tc-2)">No candidates yet…</span></div></div>';
+    }
+    document.getElementById('matchCands').innerHTML = html;
+
+    // Lock progress
+    var lp = msg.lockProgress;
+    if (lp && cands.length) {
+      document.getElementById('lockProgress').style.display = '';
+      var winsHtml = '';
+      for (var i = 0; i < (lp.winsRequired || 2); i++) {
+        winsHtml += '<div class="lock-win-dot' + (i < lp.wins ? ' filled' : '') + '"></div>';
+      }
+      winsHtml += '<span style="font-size:11px;color:var(--tc-2);margin-left:4px">' + lp.wins + '/' + lp.winsRequired + ' wins</span>';
+      document.getElementById('lockWins').innerHTML = winsHtml;
+      document.getElementById('lockMargin').textContent = 'gap: ' + (lp.margin || 0) + 'pt';
+      document.getElementById('lockCoverage').textContent = 'cov: ' + (lp.coverage || 0) + '%';
+      var msg2 = lp.wins === 0 ? 'Auto locking…'
+        : lp.wins === 1 ? 'Auto locking… ' + lp.wins + '/' + lp.winsRequired + ' wins'
+        : 'Auto locking…';
+      document.getElementById('lockMsg').textContent = msg2;
+    }
+  }
+
+  function handleServerMsg(msg) {
+    if (msg.type === 'connected') {
+      log('Backend ready', 'ok');
+      // Groq has no warmup; in Groq mode skip the "Server waking…" flash that
+      // was designed for the HF endpoint cold-start path.
+      var usingGroq = S.settings && S.settings.transcriptionProvider === 'groq';
+      _modelProvider = usingGroq ? 'groq' : '';
+      if (usingGroq) {
+        setPill('sPillModel', 'ok', 'Ready');
+        // Hide the HF-specific endpoint pill (whisper-v3) left over from a prior
+        // Whisper session — it's not relevant in Groq mode.
+        var fePill = document.getElementById('sPillEndpoint');
+        if (fePill) fePill.style.display = 'none';
+      } else {
+        setPill('sPillModel', 'warn', 'Server waking\u2026');
+      }
+      setPill('sPillConf', '', 'Match: --');
+      // Send start if recording button was already active (reconnect case)
+      if (S.isRecording && S.ws && S.ws.readyState === WebSocket.OPEN)
+        S.ws.send(JSON.stringify({ type: 'start' }));
+    } else if (msg.type === 'pipeline_version') {
+      var pv = (msg.version || 'v3').toUpperCase();
+      document.getElementById('versionEl').textContent = APP_VERSION + ' ' + pv;
+      log('Pipeline: ' + pv, 'ok');
+    } else if (msg.type === 'pace') {
+      updatePacePill(msg);
+    } else if (msg.type === 'sys_status') {
+      handleSysStatus(msg);
+    } else if (msg.type === 'match_progress') {
+      if (S.isRecording) updateMatchPanel(msg);
+    } else if (msg.type === 'state') {
+      if (msg.whisperText) {
+        log('Heard: ' + msg.whisperText.slice(0, 60), 'w');
+      }
+      // Update confidence pill
+      var _conf = msg.state.isCandidate
+        ? (msg.state.candidateScore || 0)
+        : Math.round((msg.state.confidence || 0) * 100);
+      var _confMode = msg.state.mode;
+      if (_confMode === 'LOCKED') {
+        setPill('sPillConf', _conf >= 70 ? 'ok' : 'warn', 'Match: ' + _conf + '%');
+      } else if (_confMode === 'SEARCHING' && msg.state.isCandidate) {
+        setPill('sPillConf', 'warn', 'Match: ~' + _conf + '%');
+      } else if (_confMode === 'SEARCHING') {
+        setPill('sPillConf', '', 'Match: searching');
+      } else if (_confMode === 'RESUMING') {
+        setPill('sPillConf', 'warn', 'Match: resuming');
+      } else {
+        setPill('sPillConf', '', 'Match: ' + (_confMode || '--'));
+      }
+      if (msg.state.pace) updatePacePill(msg.state.pace);
+      updatePhoneUI(msg.state, msg.whisperText);
+      if (S.isG2) {
+        var prev = S._lastGlassesState || {};
+        var sessionStart = prev._glassesSession !== _glassesSessionId;
+        S._lastGlassesState = Object.assign({}, msg.state, { _glassesSession: _glassesSessionId });
+        if (msg.state.isCandidate || msg.state.mode === 'LOCKED') stopSearchingDots();
+        if (_practiceMode && msg.state.userSearching && msg.state.arabic) stopSearchingDots();
+        if (msg.state.isCandidate) startLockingDots();
+        else stopLockingDots();
+        // Force full rebuild when leaving LOCKED or when candidate verse changes so G2 reliably gets updates (textContainerUpgrade can fail over BLE)
+        if (sessionStart ||
+            (prev.mode === 'LOCKED' && msg.state.mode !== 'LOCKED') ||
+            (msg.state.mode !== 'LOCKED' && (prev.surah !== msg.state.surah || prev.ayah !== msg.state.ayah)))
+          S.displayRebuilt = false;
+        var gDisplay = buildGlassesText(msg.state);
+        // Live "Heard vs Shown" indicator — shows drift between Whisper/Groq
+        // confirmed position and current display so the user can see when the
+        // pipeline is out of sync.
+        var heardS = msg.state.whisperSurah, heardA = msg.state.whisperAyah;
+        var shownS = msg.state.surah, shownA = msg.state.ayah;
+        var heardPill = document.getElementById('sPillHeard');
+        var shownPill = document.getElementById('sPillShown');
+        if (heardS && heardA) {
+          heardPill.style.display = '';
+          var heardLabel = 'Heard: ' + heardS + ':' + heardA;
+          document.getElementById('heardRef').textContent = heardLabel;
+          var drift = (heardS === shownS) ? (shownA - heardA) : null;
+          heardPill.className = 's-pill ' + (drift === null ? 'warn' :
+            Math.abs(drift) === 0 ? 'ok' : Math.abs(drift) <= 1 ? 'info' : 'err');
+        } else if (heardPill) { heardPill.style.display = 'none'; }
+        if (shownS && shownA && msg.state.mode === 'LOCKED') {
+          shownPill.style.display = '';
+          document.getElementById('shownRef').textContent = 'Shown: ' + shownS + ':' + shownA;
+        } else if (shownPill) { shownPill.style.display = 'none'; }
+
+        if (msg.state.mode === 'LOCKED') {
+          var ayahChanged = sessionStart || msg.state.surah !== prev.surah || msg.state.ayah !== prev.ayah || prev.mode !== 'LOCKED';
+          if (!_practiceMode) {
+            if (ayahChanged) {
+              // Force full rebuild so glasses reliably receive the new verse
+              // (textContainerUpgrade can fail to push over BLE in some cases)
+              S.displayRebuilt = false;
+              var wc = (msg.state.arabic || '').split(/\s+/).length || 4;
+              var rawMs = msg.state.timerMs || Math.max(3000, wc * 700);
+              // With Groq (fast transcription), the next ayah lock arrives sooner than
+              // the display timer would expire — shave more aggressively so the visual
+              // countdown doesn't lag behind real events. The next state update will
+              // still preempt the timer immediately when an ayah change arrives.
+              var usingGroq = S.settings && S.settings.transcriptionProvider === 'groq';
+              var shave = usingGroq ? 1200 : 500;
+              var floor = usingGroq ? 900 : 1500;
+              var estMs = Math.max(floor, rawMs - shave);
+              startPageFlip(gDisplay, estMs);
+            } else if (msg.state.timerMs && !_pageTimer) {
+              // Refresh countdown when we have timerMs — backend sends every 1s so
+              // countdown never disappears. Skip when in multi-page flip (has own timing).
+              startCountdown(msg.state.timerMs, gDisplay.hdr, gDisplay.pages[0] || '');
+            }
+          } else {
+            stopPageFlip();
+            stopCountdown();
+            // Practice still mirrors every ayah snap to glasses (timer path is off).
+            if (ayahChanged) {
+              S.displayRebuilt = false;
+              showGlassesPage(gDisplay, 0);
+            }
+          }
+        } else {
+          stopPageFlip(); stopCountdown();
+          var practiceHolding = _practiceMode && msg.state.userSearching && msg.state.arabic;
+          if (practiceHolding || msg.state.mode === 'LOCKED' || msg.state.isCandidate) {
+            stopSearchingDots();
+          } else if (msg.state.mode === 'SEARCHING' && S.isRecording) {
+            startSearchingDots();
+          }
+          if (practiceHolding || sessionStart ||
+              prev.mode !== msg.state.mode ||
+              prev.surah !== msg.state.surah || prev.ayah !== msg.state.ayah) {
+            S.displayRebuilt = false;
+          }
+          showGlassesPage(gDisplay, 0);
+        }
+      }
+    } else if (msg.type === 'ameen') {
+      log('Ameen', 'ok');
+      if (S.isG2) {
+        glassesUpdate({ hdr: 'Ameen', body: 'Ameen' });
+      }
+      var ameenEl = document.getElementById('ameenOverlay');
+      if (ameenEl) {
+        ameenEl.style.display = 'flex';
+        clearTimeout(ameenEl._timer);
+        ameenEl._timer = setTimeout(function() { ameenEl.style.display = 'none'; }, 4000);
+      }
+    } else if (msg.type === 'taraweeh') {
+      _updateTaraweehOverlay(msg.position, msg.rakat);
+      log('Taraweeh: ' + msg.position + ' rakat=' + msg.rakat, 'ok');
+    } else if (msg.type === 'wordProgress') {
+      // V4: Handle word progress updates
+      _updateWordProgress(msg);
+    } else if (msg.type === 'error') {
+      log('Backend error: ' + msg.error, 'err');
+    }
+  }
+
+  // V4: Update word progress bar
+  function _updateWordProgress(msg) {
+    var progressDiv = document.getElementById('wordProgress');
+    var textSpan = document.getElementById('wordProgressText');
+    var percentSpan = document.getElementById('wordProgressPercent');
+    var fillDiv = document.getElementById('wordProgressFill');
+    
+    if (!progressDiv || !msg.totalWords) {
+      if (progressDiv) progressDiv.style.display = 'none';
+      return;
+    }
+    
+    // Show progress bar
+    progressDiv.style.display = 'block';
+    
+    // Update text: "Word 5 / 12"
+    var currentWord = Math.min(msg.wordIndex + 1, msg.totalWords); // +1 for 1-indexed display
+    textSpan.textContent = currentWord + ' / ' + msg.totalWords;
+    
+    // Update percentage
+    var percent = Math.round(msg.progress * 100);
+    percentSpan.textContent = percent + '%';
+    
+    // Update progress bar width
+    fillDiv.style.width = (msg.progress * 100) + '%';
+  }
+
+  // ─── Audio ────────────────────────────────────────────────────────────────
+  function rmsFloat32(f32) {
+    var s = 0;
+    for (var i = 0; i < f32.length; i++) s += f32[i] * f32[i];
+    return Math.sqrt(s / f32.length) || 0;
+  }
+
+  function rmsInt16(u8) {
+    var i16 = new Int16Array(u8.buffer, u8.byteOffset, u8.byteLength / 2);
+    var s = 0;
+    for (var i = 0; i < i16.length; i++) { var v = i16[i] / 32768; s += v * v; }
+    return Math.sqrt(s / i16.length) || 0;
+  }
+
+  var _pcmChunkCount = 0;
+  var _pcmBytesSent  = 0;
+
+  var MAX_ACCUM_SAMPLES = 16000 * 5;  // cap at 5s to prevent burst on reconnect
+
+  function sendPcm(u8) {
+    if (!S.isRecording) return;   // ignore mic until user clicks Start
+    if (S.isG2) updateWave(rmsInt16(u8));
+    if (S.mode === 'PAUSED') return;
+    var now = Date.now();
+    var i16 = new Int16Array(u8.buffer, u8.byteOffset, u8.byteLength / 2);
+    for (var i = 0; i < i16.length; i++) S.pcmAccum.push(i16[i]);
+    // Drop oldest samples if accumulation grows too large (caps reconnect burst to 5s)
+    if (S.pcmAccum.length > MAX_ACCUM_SAMPLES) {
+      S.pcmAccum = S.pcmAccum.slice(S.pcmAccum.length - MAX_ACCUM_SAMPLES);
+    }
+
+    // ── Stage 1 log: mic is capturing ─────────────────────────────────────────
+    if (_pcmChunkCount === 0) {
+      var src = S.isG2 ? 'G2 mic' : 'browser mic';
+      log('\u25cf Stage 1 \u2014 ' + src + ' capturing (' + u8.byteLength + 'B/frame)', 'ok');
+      setPill('sPillConf', 'ok', 'Match: listening');
+    }
+    _pcmChunkCount++;
+
+    // Only flush when WS is actually open — never discard audio to a closed socket
+    if ((now - S.lastSend) >= SEND_INTERVAL && S.pcmAccum.length
+        && S.ws && S.ws.readyState === WebSocket.OPEN) {
+      var chunk = new Uint8Array(new Int16Array(S.pcmAccum).buffer);
+      S.ws.send(chunk);
+      _pcmBytesSent += chunk.byteLength;
+      S.lastSend = now;
+      S.pcmAccum = [];
+
+      // ── Stage 2 log: audio sent to backend ──────────────────────────────────
+      if (_pcmBytesSent <= chunk.byteLength) {  // only log first send
+        log('\u25cf Stage 2 \u2014 PCM sent to backend (' + chunk.byteLength + 'B)', 'ok');
+      }
+    }
+  }
+
+  function startG2Mic() {
+    if (!S.bridge || !S.startupPageCreated) return;
+    queueBridgeCall('audioControl(true)', function () {
+      return S.bridge.audioControl(true).then(function () {
+        S.g2MicPermissionState = 'granted';
+        log('G2 mic opened', 'ok');
+      });
+    });
+  }
+
+  function stopG2Mic() {
+    if (!S.bridge || !S.startupPageCreated) return;
+    queueBridgeCall('audioControl(false)', function () {
+      return S.bridge.audioControl(false);
+    });
+  }
+
+  function handleForegroundExit() {
+    if (!S.isRecording) return;
+    S.pausedByBackground = true;
+    stopSearchingDots();
+    stopLockingDots();
+    stopPageFlip();
+    stopCountdown();
+    try { stopG2Mic(); } catch (_) {}
+    try { stopBrowserMic(); } catch (_) {}
+    // Use 'pause' (not 'stop') — preserves pipeline state, remembers display
+    // position + timer remainder, keeps Whisper listening so resume is seamless.
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      try { S.ws.send(JSON.stringify({ type: 'pause' })); } catch (_) {}
+    }
+    setStatus('Paused in background', 'error');
+    log('Paused capture while app is backgrounded', 'w');
+  }
+
+  function handleForegroundEnter() {
+    if (!S.pausedByBackground) return;
+    S.pausedByBackground = false;
+    // Resume from saved state — do NOT send init, that destroys the pipeline
+    // and resets to SEARCHING. audio_return restores from the paused position.
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      try { S.ws.send(JSON.stringify({ type: 'audio_return' })); } catch (_) {}
+    }
+    var useBrowserMic = S.settings.forcePhoneMic || !S.isG2;
+    if (useBrowserMic) startBrowserMic();
+    else startG2Mic();
+    setStatus('Resumed in foreground', 'result');
+    log('Resumed capture after foreground enter', 'ok');
+  }
+
+  function requestG2MicPermission() {
+    if (!S.bridge || !S.isG2 || !S.startupPageCreated) {
+      return Promise.reject(new Error('G2 bridge not ready'));
+    }
+    return queueBridgeCall('audioControl(true)-preflight', function () {
+      return S.bridge.audioControl(true).then(function () {
+        S.g2MicPermissionState = 'granted';
+        return S.bridge.audioControl(false).then(function () {
+          log('G2 mic permission preflight complete', 'ok');
+          return true;
+        });
+      });
+    }).catch(function (err) {
+      S.g2MicPermissionState = 'denied';
+      throw err;
+    });
+  }
+
+  function ensureMicPermissionForCurrentSource() {
+    var useBrowserMic = S.settings.forcePhoneMic || !S.isG2;
+    if (useBrowserMic) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return Promise.reject(new Error('Microphone API not available'));
+      }
+      return navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        return true;
+      });
+    }
+    return requestG2MicPermission();
+  }
+
+  function startBrowserMic() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      log('No mic API', 'err'); return;
+    }
+    log('Requesting mic...');
+    navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: true } })
+      .then(function (stream) {
+        S.mediaStream = stream;
+        S.audioContext = new AudioContext();
+        var src = S.audioContext.createMediaStreamSource(stream);
+        S.scriptProcessor = S.audioContext.createScriptProcessor(4096, 1, 1);
+        src.connect(S.scriptProcessor);
+        S.scriptProcessor.connect(S.audioContext.destination);
+        log('Browser mic open, sr=' + S.audioContext.sampleRate, 'ok');
+
+        S.scriptProcessor.onaudioprocess = function (e) {
+          var f32 = e.inputBuffer.getChannelData(0);
+          updateWave(rmsFloat32(f32));
+          var ratio = S.audioContext.sampleRate / TARGET_SR;
+          var rs = new Float32Array(Math.floor(f32.length / ratio));
+          for (var i = 0; i < rs.length; i++) rs[i] = f32[Math.floor(i * ratio)];
+          var i16 = new Int16Array(rs.length);
+          for (var j = 0; j < rs.length; j++) {
+            var s = Math.max(-1, Math.min(1, rs[j]));
+            i16[j] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          }
+          sendPcm(new Uint8Array(i16.buffer));
+        };
+      })
+      .catch(function (err) {
+        log('Mic denied: ' + err.message, 'err');
+        log('Tip: Check browser Settings → Site → Microphone, or try "Use phone mic" in Settings', 'info');
+      });
+  }
+
+  function stopBrowserMic() {
+    if (S.scriptProcessor) { try { S.scriptProcessor.disconnect(); } catch (_) {} S.scriptProcessor = null; }
+    if (S.audioContext) { try { S.audioContext.close(); } catch (_) {} S.audioContext = null; }
+    if (S.mediaStream) { S.mediaStream.getTracks().forEach(function (t) { t.stop(); }); S.mediaStream = null; }
+  }
+
+  // ─── G2 event handler ─────────────────────────────────────────────────────
+  // Per Device APIs (hub.evenrealities.com/docs/build/device-apis):
+  //   CLICK_EVENT (0) = single press, DOUBLE_CLICK_EVENT (3) = double press,
+  //   SCROLL_TOP_EVENT (1) / SCROLL_BOTTOM_EVENT (2) = swipe up/down.
+  // G2 temple and R1 ring share event types; distinguish via eventSource when present.
+  // Text container with isEventCapture=1 receives events as textEvent.
+  var _lastScrollTime = 0;
+  var _scrollBurstCount = 0;    // absorb burst-queued events
+  var _scrollBurstTimer = null;
+  var _lastDoubleTapTime = 0;   // debounce double-tap (G2 sometimes fires twice)
+
+  // Idle root: startup / searching with no verse locked — double-tap opens system exit.
+  function isG2RootIdle() {
+    if (S.isRecording) return false;
+    var st = S._lastGlassesState;
+    if (!st) return true;
+    if (st.isCandidate) return false;
+    if (st.mode === 'LOCKED' && st.surah > 0 && st.ayah > 0) return false;
+    return true;
+  }
+
+  function onG2Event(event) {
+    if (event.audioEvent && event.audioEvent.audioPcm) {
+      sendPcm(event.audioEvent.audioPcm);
+      return;
+    }
+    // Trace everything except the high-frequency audio stream.
+    var _evKind = event.sysEvent ? 'sys' : event.textEvent ? 'text' : event.listEvent ? 'list' : 'other';
+    var _evType = (event[_evKind + 'Event'] && event[_evKind + 'Event'].eventType);
+    if (_evType == null) _evType = 0;
+    var _evSrc = _readEventSource(event, event.textEvent || event.sysEvent || event.listEvent);
+    trace('g2.event', _evKind + ':' + _evType + ' src=' + (_evSrc != null ? _evSrc : '-'));
+    if (event.sysEvent) {
+      var st = (event.sysEvent.eventType == null ? 0 : event.sysEvent.eventType);
+      if (st === 4) {
+        log('G2 foreground enter', 'ok');
+        if (S.isRecording && S.ws && S.ws.readyState === WebSocket.OPEN) {
+          S.ws.send(JSON.stringify({ type: 'start' }));
+        }
+        handleForegroundEnter();
+      } else if (st === 5) {
+        log('G2 foreground exit', 'w');
+        handleForegroundExit();
+      } else if (st === 6 || st === 7) {
+        log('G2 exit event ' + st + ' — cleaning up', 'w');
+        _cleanupBridgeResources();
+        return;
       }
     }
 
-    async function nav(action) {
-      await fetch('/api/' + action + location.search, { method: 'POST', credentials: 'include' });
-      refresh();
+    var ev = event.textEvent || event.sysEvent || event.listEvent;
+    if (!ev) return;
+
+    noteRingInput(event, ev);
+
+    var t = (ev.eventType == null ? 0 : ev.eventType);
+
+    // TAP (Click) → advance one ayah forward
+    if (t === 0 || t === undefined) {
+      if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+        S.ws.send(JSON.stringify({ type: 'manual_advance' }));
+      }
+      return;
     }
-    document.getElementById('prev').onclick = () => nav('prev');
-    document.getElementById('next').onclick = () => nav('next');
-    refresh();
-    setInterval(refresh, 1500);
-  </script>
+
+    // DOUBLE TAP → next page on multi-page ayahs, or pause/resume on last/single page
+    if (t === 3) {
+      // Debounce: G2 bridge can fire the same double-tap twice in quick
+      // succession, producing a stop→start flash. Swallow repeats within 700ms.
+      var nowDt = Date.now();
+      if (nowDt - (_lastDoubleTapTime || 0) < 700) return;
+      _lastDoubleTapTime = nowDt;
+      // Multi-page ayah: double-tap advances pages (not exit/pause).
+      if (_pageDisplay && _pageDisplay.pages && _pageDisplay.pages.length > 1 && _pageIdx < _pageDisplay.pages.length - 1) {
+        // Multi-page ayah, not on last page — advance to next page
+        _pageIdx++;
+        var h = showGlassesPage(_pageDisplay, _pageIdx);
+        // Reset page-flip timer from this point
+        if (_pageTimer) { clearInterval(_pageTimer); _pageTimer = null; }
+        if (_pageIdx < _pageDisplay.pages.length - 1) {
+          startCountdown(_pageMs, h, _pageDisplay.pages[_pageIdx] || '');
+          _pageTimer = setInterval(function () {
+            _pageIdx++;
+            if (_pageIdx >= _pageDisplay.pages.length) { stopPageFlip(); return; }
+            var hh = showGlassesPage(_pageDisplay, _pageIdx);
+            startCountdown(_pageMs, hh, _pageDisplay.pages[_pageIdx] || '');
+          }, _pageMs);
+        } else {
+          startCountdown(_pageMs, h, _pageDisplay.pages[_pageIdx] || '');
+        }
+        return;
+      }
+      // Single page or last page — double-tap is a simple START/STOP toggle.
+      if (!S.isRecording) {
+        startListening();
+      } else {
+        stopListening();
+      }
+      return;
+    }
+
+    // SCROLL: up(1) = previous ayah, down(2) = next ayah.
+    // Debounce 700ms: the G2 bridge can queue scroll events during processing,
+    // delivering a burst of 4-6 events at once. We absorb the burst and only
+    // send ONE command for the first event in each 700ms window.
+    if (t === 1 || t === 2) {
+      var now = Date.now();
+      if (now - _lastScrollTime < 700) {
+        // Burst event — absorb silently
+        _scrollBurstCount++;
+        return;
+      }
+      _lastScrollTime = now;
+      _scrollBurstCount = 0;
+      if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+        S.ws.send(JSON.stringify({ type: t === 1 ? 'manual_prev' : 'manual_advance' }));
+      }
+      mirrorManualNavOnGlasses();
+    }
+  }
+
+  window.manualPrevAyah = function () {
+    if (MENTRA_MODE) {
+      fetch(mentraApiUrl('/api/prev'), { method: 'POST', headers: mentraAuthHeaders(), credentials: 'include' });
+      return;
+    }
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify({ type: 'manual_prev' }));
+    }
+    mirrorManualNavOnGlasses();
+  };
+  window.manualNextAyah = function () {
+    if (MENTRA_MODE) {
+      fetch(mentraApiUrl('/api/next'), { method: 'POST', headers: mentraAuthHeaders(), credentials: 'include' });
+      return;
+    }
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify({ type: 'manual_advance' }));
+    }
+    mirrorManualNavOnGlasses();
+  }
+
+  // ─── Record button ────────────────────────────────────────────────────────
+  function startListening() {
+    // BYOK only: block start if no API key for the selected provider. Shared
+    // mode uses server-held keys — no precheck needed (backend will tell us
+    // via sys_status if neither shared key is configured).
+    if (S.settings.keyMode === 'byok') {
+      var provSel = S.settings.transcriptionProvider === 'openai' ? 'openai' : 'groq';
+      var keyForProv = provSel === 'openai'
+        ? (S.settings.openaiApiKey || '').trim()
+        : (S.settings.groqApiKey || '').trim();
+      if (!keyForProv) {
+        var pLabel = provSel === 'openai' ? 'OpenAI' : 'Groq';
+        setStatus(pLabel + ' API key required — opening settings', 'warn');
+        if (typeof log === 'function') log('No ' + pLabel + ' key set — open Settings and enter one', 'warn');
+        setTimeout(function () { try { showSettings(); } catch (_) {} }, 400);
+        return;
+      }
+    }
+    S.isRecording = true;
+    _glassesSessionId++;
+    S._lastGlassesState = null;
+    S.displayRebuilt = false;
+    S.pcmAccum = [];
+    S.lastSend = 0;
+    _pcmChunkCount = 0;
+    _pcmBytesSent  = 0;
+    initWave();
+    // Clear any stale "Stopped" text from the last session immediately — state
+    // updates will refine this once audio starts flowing.
+    setStatus('Listening\u2026');
+
+    // Only reconnect if not already connected — reuse existing connection if open
+    if (!S.ws || S.ws.readyState !== WebSocket.OPEN) {
+      connectWS();
+    } else {
+      // Already connected — just re-init pipeline and activate.
+      // MUST include groqApiKey or the server falls back to HF and the UI
+      // flashes "Server warming up / whisper-v3" until the user opens
+      // settings (which triggers a correct reinit).
+      S.ws.send(JSON.stringify({
+        type: 'init',
+        sessionId: _clientSessionId,
+        preferredSurah: parseInt(S.settings.defaultSurah || '0'),
+        lang: (S.settings.lang || '').trim() || null,
+        pipelineVersion: S.settings.pipelineVersion || 'v4',
+        fastMode: _fastMode,
+        slowMode: _slowMode,
+        practiceMode: _practiceMode,
+        taraweehMode: _taraweehMode,
+        transcriptionProvider: S.settings.transcriptionProvider || 'groq',
+        groqApiKey: (S.settings.keyMode === 'byok' ? (S.settings.groqApiKey || '').trim() : '') || null,
+        openaiApiKey: (S.settings.keyMode === 'byok' ? (S.settings.openaiApiKey || '').trim() : '') || null,
+      }));
+      setReciteMode(_reciteMode);
+      S.ws.send(JSON.stringify({ type: 'start' }));
+      log('Reused existing WS, sent start', 'ok');
+    }
+
+    var btn = document.getElementById('recordBtn');
+    btn.disabled = true;
+    ensureMicPermissionForCurrentSource().then(function () {
+      acquireWakeLock();
+      var useBrowserMic = S.settings.forcePhoneMic || !S.isG2;
+      if (useBrowserMic) { startBrowserMic(); if (S.isG2) { showGlassesPage(buildGlassesText({ mode: 'SEARCHING' }), 0); startSearchingDots(); } }
+      else { startG2Mic(); showGlassesPage(buildGlassesText({ mode: 'SEARCHING' }), 0); startSearchingDots(); }
+
+      // Show matching panel, hide idle state
+      document.getElementById('matchIdle').style.display = 'none';
+      document.getElementById('matchPanel').style.display = '';
+      resetMatchPanel();
+
+      btn.textContent = '\u2192 Stop Listening';
+      btn.classList.add('recording');
+    }).catch(function (err) {
+      S.isRecording = false;
+      releaseWakeLock();
+      var msg = err && err.message ? err.message : 'Microphone permission failed';
+      setStatus('Mic permission required', 'error');
+      log('Mic permission failed: ' + msg, 'err');
+      if (S.isG2 && !(S.settings.forcePhoneMic || !S.isG2)) {
+        log('Tip: Tap Start once on glasses-connected app to grant G2 mic access.', 'info');
+      }
+      btn.textContent = S.isG2 ? '\u2192 Start Listening' : '\u2192 Start Listening';
+      btn.classList.remove('recording');
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  }
+
+  function stopListening() {
+    S.isRecording = false;
+    releaseWakeLock();
+    _cancelReconnect();
+    if (S.ws && S.ws.readyState === WebSocket.OPEN)
+      S.ws.send(JSON.stringify({ type: 'stop' }));
+
+    // Update G2 glasses BEFORE tearing down mic/WS — bridge must still be alive
+    if (S.isG2) {
+      glassesUpdate({ hdr: appTitleHdr(), body: 'Stopped.' });
+      S.displayRebuilt = false;   // reset for next session
+    }
+
+    var useBrowserMic = S.settings.forcePhoneMic || !S.isG2;
+    if (useBrowserMic) stopBrowserMic();
+    else stopG2Mic();
+    _closeWsSilently(S.ws);   // close without triggering reconnect loop
+    S.ws = null;
+    S.pcmAccum = [];
+
+    // Hide matching panel, show idle
+    document.getElementById('matchIdle').style.display = '';
+    document.getElementById('matchPanel').style.display = 'none';
+    document.getElementById('lockProgress').style.display = 'none';
+
+    var btn = document.getElementById('recordBtn');
+    btn.textContent = S.isG2 ? '\u2192 Start Listening' : '\u2192 Start Listening';
+    btn.classList.remove('recording');
+    setStatus('Stopped');
+    stopPageFlip(); stopCountdown(); stopSearchingDots(); stopLockingDots();
+    S._lastGlassesState = null;
+    updatePhoneUI({ mode: 'SEARCHING' });
+  }
+
+  function _flushSessionState() {
+    try { saveSettings(); } catch (_) {}
+  }
+
+  function _cleanupBridgeResources() {
+    S.startupPageCreated = false;
+    stopSearchingDots();
+    stopLockingDots();
+    stopPageFlip();
+    stopCountdown();
+    releaseWakeLock();
+    if (S.unsubs.evenHubEvent) {
+      try { S.unsubs.evenHubEvent(); } catch (_) {}
+      S.unsubs.evenHubEvent = null;
+    }
+    if (S.unsubs.deviceStatus) {
+      try { S.unsubs.deviceStatus(); } catch (_) {}
+      S.unsubs.deviceStatus = null;
+    }
+    if (S.unsubs.launchSource) {
+      try { S.unsubs.launchSource(); } catch (_) {}
+      S.unsubs.launchSource = null;
+    }
+    try { stopG2Mic(); } catch (_) {}
+    try { stopBrowserMic(); } catch (_) {}
+    _flushSessionState();
+  }
+
+  function requestSystemExit() {
+    if (!S.bridge) return;
+    queueBridgeCall('shutDownPageContainer', function () {
+      return S.bridge.shutDownPageContainer(1).then(function () {
+        log('Exit confirmation opened', 'ok');
+      });
+    });
+  }
+
+  // ─── G2 bridge detection ──────────────────────────────────────────────────
+  // Copied exactly from invendor/even-bridge (the proven working pattern)
+  async function detectBridge() {
+    if (MENTRA_MODE) {
+      log('Mentra webview — phone UI (mic + glasses via MentraOS)', 'ok');
+      S.isG2 = false;
+      S.bridge = null;
+      setPill('sPillG2', 'ok', 'Mentra');
+      var btn = document.getElementById('recordBtn');
+      if (btn) {
+        btn.textContent = 'Listening via Mentra';
+        btn.disabled = true;
+        btn.classList.add('recording');
+      }
+      var idle = document.getElementById('matchIdle');
+      var panel = document.getElementById('matchPanel');
+      if (idle) idle.style.display = 'none';
+      if (panel) panel.style.display = '';
+      setStatus('Listening via Mentra glasses mic…');
+      return;
+    }
+
+    log('Loading Even Hub SDK...');
+
+    try {
+      var sdk;
+      try {
+        sdk = await import('./sdk/even_hub_sdk.js');
+        log('Loaded bundled SDK', 'ok');
+      } catch (_) {
+        sdk = await import('https://cdn.jsdelivr.net/npm/@evenrealities/even_hub_sdk@0.0.10/dist/index.js');
+        log('Loaded SDK from CDN', 'ok');
+      }
+      S.sdk = sdk;
+      S.bridge = await new Promise(function (resolve, reject) {
+        var t = setTimeout(function () { reject(new Error('timeout 2s')); }, 2000);
+        sdk.waitForEvenAppBridge().then(function (b) { clearTimeout(t); resolve(b); }, reject);
+      });
+      S.isG2 = true;
+      log('G2 bridge detected (SDK)', 'ok');
+    } catch (e) {
+      log('SDK bridge failed: ' + e.message);
+      if (typeof window.EvenAppBridge !== 'undefined' && typeof window.EvenAppBridge.getInstance === 'function') {
+        S.bridge = window.EvenAppBridge.getInstance();
+        S.isG2 = true;
+        log('G2 bridge detected (raw)', 'ok');
+      }
+    }
+
+    // Hydrate persistent storage from the bridge (browser localStorage gets
+    // wiped on .ehpk WebView restart). Then re-load settings so any values
+    // the user set on a prior session — API keys especially — come back.
+    if (S.bridge) {
+      try {
+        await Storage.attach(S.bridge);
+        var freshSettings = loadSettings();
+        S.settings = { ...S.settings, ...freshSettings };
+        // Refresh any settings inputs that were rendered with stale (empty)
+        // values before bridge hydration finished.
+        try {
+          var gKey = document.getElementById('settingGroqKey');
+          if (gKey && !gKey.value) gKey.value = S.settings.groqApiKey || '';
+          var oKey = document.getElementById('settingOpenAIKey');
+          if (oKey && !oKey.value) oKey.value = S.settings.openaiApiKey || '';
+          var lang = document.getElementById('settingLang');
+          if (lang) lang.value = sanitizeTranslationLang(S.settings.lang || '');
+          var surah = document.getElementById('settingSurah');
+          if (surah) surah.value = S.settings.defaultSurah || '0';
+          var pipe = document.getElementById('settingPipeline');
+          if (pipe) pipe.value = sanitizePipelineVersion(S.settings.pipelineVersion || 'v4');
+          if (typeof setProvider === 'function')
+            setProvider(S.settings.transcriptionProvider === 'openai' ? 'openai' : 'groq');
+        } catch (_) {}
+        // Theme may have been overwritten by bridge value too.
+        var t = Storage.getItem('qc_theme');
+        if (t === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          var tb = document.getElementById('themeBtn');
+          if (tb) tb.textContent = '☾';
+        } else if (t === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+          var tb2 = document.getElementById('themeBtn');
+          if (tb2) tb2.textContent = '☽';
+        }
+        log('Bridge storage hydrated', 'ok');
+      } catch (e) {
+        log('Bridge storage hydrate failed: ' + (e && e.message || e), 'w');
+      }
+    }
+
+    var g2Text = document.getElementById('g2Text');
+    var btn = document.getElementById('recordBtn');
+
+    if (S.isG2) {
+      _updateG2StatusPill();
+      btn.textContent = '\u25CF Start Listening (G2 mic)';
+      btn.disabled = false;
+
+      // Register event handler (store unsubscribe for cleanup)
+      try {
+        if (S.unsubs.evenHubEvent) {
+          try { S.unsubs.evenHubEvent(); } catch (_) {}
+          S.unsubs.evenHubEvent = null;
+        }
+        S.unsubs.evenHubEvent = S.bridge.onEvenHubEvent(onG2Event);
+        log('G2 event handler set', 'ok');
+      } catch (e) { log('onEvenHubEvent failed: ' + e.message, 'err'); }
+
+      // Device APIs: getDeviceInfo + onDeviceStatusChanged + onLaunchSource
+      setupDeviceApiMonitors();
+
+      // createStartUpPageContainer MUST run before audioControl (Device APIs § Audio).
+      glassesStartup();
+      // Safety-net: if startup container call is rejected, force text rebuild shortly after.
+      setTimeout(recoverStartupIfBlank, 700);
+      setTimeout(recoverStartupIfBlank, 1200);
+    } else {
+      log('No G2 — browser mic mode');
+      setPill('sPillG2', '', 'PC mic');
+      btn.textContent = '\u2192 Start Listening';
+      btn.disabled = false;
+    }
+  }
+
+  // ─── Theme toggle ──────────────────────────────────────────────────────────
+  window.toggleTheme = function () {
+    var html = document.documentElement;
+    var isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeBtn').textContent = isDark ? '\u25D1' : '\u263E';
+    Storage.setItem('qc_theme', isDark ? 'light' : 'dark');
+  };
+
+  // ─── Settings UI ──────────────────────────────────────────────────────────
+  window.setMicSource = function (src) {
+    if (_backendStatusInfo.mobileOnlyMode) src = 'phone';
+    var isPhone = src === 'phone';
+    document.getElementById('btnG2Mic').classList.toggle('active', !isPhone);
+    document.getElementById('btnPhoneMic').classList.toggle('active', isPhone);
+  };
+
+  // Free vs BYOK key mode. Shared mode = no client key sent → backend uses
+  // SHARED_GROQ_KEY/SHARED_OPENAI_KEY env vars and enforces the per-session
+  // minute cap. BYOK = user's own key, no cap, no failover.
+  window.setKeyMode = function (m) {
+    m = (m === 'byok') ? 'byok' : 'shared';
+    S.settings.keyMode = m;
+    try { saveSettings(); } catch (_) {}
+    var sBtn = document.getElementById('btnModeShared');
+    var bBtn = document.getElementById('btnModeBYOK');
+    if (sBtn) sBtn.classList.toggle('active', m === 'shared');
+    if (bBtn) bBtn.classList.toggle('active', m === 'byok');
+    var sHint = document.getElementById('sharedHint');
+    var byokSec = document.getElementById('byokSection');
+    if (sHint) sHint.style.display = (m === 'shared') ? '' : 'none';
+    if (byokSec) byokSec.style.display = (m === 'byok') ? '' : 'none';
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) reinitPipeline();
+    log('Key mode: ' + (m === 'shared' ? 'Free (shared)' : 'My own key'), 'ok');
+  };
+
+  window.setProvider = function (p) {
+    p = (p === 'openai') ? 'openai' : 'groq';
+    S.settings.transcriptionProvider = p;
+    try { saveSettings(); } catch (_) {}
+    // Settings view
+    var gBtn = document.getElementById('btnProviderGroq');
+    var oBtn = document.getElementById('btnProviderOpenAI');
+    if (gBtn) gBtn.classList.toggle('active', p === 'groq');
+    if (oBtn) oBtn.classList.toggle('active', p === 'openai');
+    // Main view
+    var gBtnM = document.getElementById('btnProviderGroqMain');
+    var oBtnM = document.getElementById('btnProviderOpenAIMain');
+    if (gBtnM) gBtnM.classList.toggle('active', p === 'groq');
+    if (oBtnM) oBtnM.classList.toggle('active', p === 'openai');
+    var gRow = document.getElementById('groqKeyRow');
+    var oRow = document.getElementById('openaiKeyRow');
+    if (gRow) gRow.style.display = (p === 'groq') ? '' : 'none';
+    if (oRow) oRow.style.display = (p === 'openai') ? '' : 'none';
+    // Re-init pipeline live if recording so the switch takes immediate effect.
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify({
+        type: 'init',
+        sessionId: _clientSessionId,
+        preferredSurah: parseInt(S.settings.defaultSurah || '0'),
+        lang: (S.settings.lang || '').trim() || null,
+        pipelineVersion: S.settings.pipelineVersion || 'v4',
+        fastMode: _fastMode,
+        slowMode: _slowMode,
+        practiceMode: _practiceMode,
+        taraweehMode: _taraweehMode,
+        transcriptionProvider: p,
+        groqApiKey: (S.settings.keyMode === 'byok' ? (S.settings.groqApiKey || '').trim() : '') || null,
+        openaiApiKey: (S.settings.keyMode === 'byok' ? (S.settings.openaiApiKey || '').trim() : '') || null,
+      }));
+      log('Provider → ' + (p === 'openai' ? 'OpenAI' : 'Groq'), 'ok');
+    }
+  };
+
+  window.testOpenAIKey = async function () {
+    var keyEl = document.getElementById('settingOpenAIKey');
+    var resultEl = document.getElementById('openaiTestResult');
+    var key = (keyEl && keyEl.value || '').trim();
+    if (!key) {
+      resultEl.textContent = 'Paste a key first';
+      resultEl.style.color = '#e53e3e';
+      return;
+    }
+    resultEl.textContent = 'Testing…';
+    resultEl.style.color = 'var(--tc-2)';
+    try {
+      var res = await fetch('https://api.openai.com/v1/models', {
+        headers: { 'Authorization': 'Bearer ' + key },
+      });
+      if (res.status === 401 || res.status === 403) {
+        resultEl.textContent = 'Invalid key (' + res.status + ')';
+        resultEl.style.color = '#e53e3e';
+        return;
+      }
+      if (!res.ok) {
+        resultEl.textContent = 'HTTP ' + res.status;
+        resultEl.style.color = '#e53e3e';
+        return;
+      }
+      var data = await res.json();
+      var count = (data.data || []).length;
+      resultEl.textContent = '\u2713 Valid — ' + count + ' models available';
+      resultEl.style.color = '#2d9e4f';
+    } catch (e) {
+      resultEl.textContent = 'Network error: ' + (e.message || e);
+      resultEl.style.color = '#e53e3e';
+    }
+  };
+
+  window.testGroqKey = async function () {
+    var keyEl = document.getElementById('settingGroqKey');
+    var resultEl = document.getElementById('groqTestResult');
+    var key = (keyEl && keyEl.value || '').trim();
+    if (!key) {
+      resultEl.textContent = 'Paste a key first';
+      resultEl.style.color = '#e53e3e';
+      return;
+    }
+    resultEl.textContent = 'Testing…';
+    resultEl.style.color = 'var(--tc-2)';
+    try {
+      // Groq's /v1/models endpoint — auth check without using transcription quota
+      var res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': 'Bearer ' + key },
+      });
+      if (res.status === 401 || res.status === 403) {
+        resultEl.textContent = 'Invalid key (' + res.status + ')';
+        resultEl.style.color = '#e53e3e';
+        return;
+      }
+      if (!res.ok) {
+        resultEl.textContent = 'HTTP ' + res.status;
+        resultEl.style.color = '#e53e3e';
+        return;
+      }
+      var data = await res.json();
+      var count = (data.data || []).length;
+      resultEl.textContent = '\u2713 Valid — ' + count + ' models available';
+      resultEl.style.color = '#2d9e4f';
+    } catch (e) {
+      resultEl.textContent = 'Network error: ' + (e.message || e);
+      resultEl.style.color = '#e53e3e';
+    }
+  };
+
+  window.setMainLang = function (v) {
+    var clean = sanitizeTranslationLang(v);
+    S.settings.lang = clean;
+    saveSettings();
+    updateTranslationDesc && updateTranslationDesc();
+    // Re-init so the pipeline fetches the right translation bundle
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) reinitPipeline();
+    log('Translation: ' + (clean || 'English (built-in)'), 'ok');
+  };
+
+
+  window.setGlassesBottom = function (mode) {
+    var valid = { transliteration: 1, 'translation-only': 1 };
+    if (!valid[mode]) mode = 'transliteration';
+    S.settings.glassesBottom = mode;
+    saveSettings();
+    var mainBtns = {
+      transliteration: 'btnGlassesTranslit',
+      'translation-only': 'btnGlassesEnOnly',
+    };
+    Object.keys(mainBtns).forEach(function (k) {
+      var btn = document.getElementById(mainBtns[k]);
+      if (btn) btn.classList.toggle('active', mode === k);
+    });
+    var settingsBtns = { transliteration: 'btnBottomTranslit' };
+    Object.keys(settingsBtns).forEach(function (k) {
+      var btn = document.getElementById(settingsBtns[k]);
+      if (btn) btn.classList.toggle('active', mode === k);
+    });
+    S.displayRebuilt = false;
+  };
+
+  function updateEndpointLifecycleUI(lifecycle) {
+    if (!lifecycle || lifecycle.component !== 'model') return;
+    _backendStatusInfo.endpointLifecycle = lifecycle;
+    refreshMainWakeButton();
+  }
+
+  function applyBackendModeSettings(status) {
+    _backendStatusInfo.endpointOnDemandEnabled = !!status.endpointOnDemandEnabled;
+    _backendStatusInfo.mobileOnlyMode = !!status.mobileOnlyMode;
+
+    var mobileRow = document.getElementById('mobileOnlyHintRow');
+    if (mobileRow) mobileRow.style.display = _backendStatusInfo.mobileOnlyMode ? '' : 'none';
+    var wakeRow = document.getElementById('wakeServerRow');
+    if (wakeRow) wakeRow.style.display = '';
+
+    var g2Btn = document.getElementById('btnG2Mic');
+    var phoneBtn = document.getElementById('btnPhoneMic');
+    if (g2Btn && phoneBtn) {
+      g2Btn.disabled = _backendStatusInfo.mobileOnlyMode;
+      if (_backendStatusInfo.mobileOnlyMode) {
+        S.settings.forcePhoneMic = true;
+        setMicSource('phone');
+      }
+    }
+    refreshMainWakeButton();
+  }
+
+  function wakeServerNow() {
+    var btn = document.getElementById('wakeServerBtn');
+    var mainBtn = document.getElementById('wakeServerMainBtn');
+    var hint = document.getElementById('wakeServerHint');
+    var base = (getWsUrl()).replace(/^ws/, 'http').replace(/\/ws$/, '');
+    if (btn) btn.disabled = true;
+    if (mainBtn) mainBtn.disabled = true;
+    if (hint) hint.textContent = 'Starting service...';
+    fetch(base + '/api/endpoint/warmup')
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body.message || 'Start failed');
+        if (hint) hint.textContent = 'Service start request sent.';
+        checkBackend();
+      })
+      .catch(function () {
+        if (hint) hint.textContent = 'Warming up server… please wait';
+      })
+      .finally(function () {
+        if (btn) btn.disabled = false;
+        if (mainBtn) mainBtn.disabled = false;
+      });
+  }
+
+
+
+  window.updateTranslationDesc = function () {
+    var sel = document.getElementById('settingLang');
+    var descEl = document.getElementById('translationDesc');
+    if (!sel || !descEl) return;
+    var opt = sel.options[sel.selectedIndex];
+    var title = opt ? opt.getAttribute('title') : '';
+    descEl.textContent = title || '';
+  };
+
+  window.showHelp = function () {
+    showSettings();
+    var help = document.getElementById('helpSection');
+    if (help) help.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  window.showSettings = function () {
+    document.getElementById('mainView').style.display = 'none';
+    document.getElementById('settingsView').style.display = 'block';
+    document.getElementById('settingLang').value = sanitizeTranslationLang(S.settings.lang || '');
+    document.getElementById('settingSurah').value = S.settings.defaultSurah || '0';
+    document.getElementById('settingPipeline').value = sanitizePipelineVersion(S.settings.pipelineVersion || 'v4');
+    document.getElementById('settingGroqKey').value = S.settings.groqApiKey || '';
+    var oaiInput = document.getElementById('settingOpenAIKey');
+    if (oaiInput) oaiInput.value = S.settings.openaiApiKey || '';
+    setProvider(S.settings.transcriptionProvider === 'openai' ? 'openai' : 'groq');
+    setKeyMode(S.settings.keyMode === 'byok' ? 'byok' : 'shared');
+    setMicSource(S.settings.forcePhoneMic ? 'phone' : 'g2');
+    setGlassesBottom(S.settings.glassesBottom === 'translation-only' ? 'translation-only' : 'transliteration');
+    document.getElementById('settingsVersion').textContent = APP_VERSION + ' \u2022 ' + new Date().toLocaleDateString();
+    updateTranslationDesc();
+    checkBackend();
+    updateMicStatus();
+    document.getElementById('settingMicTest').onclick = requestMicFromSettings;
+    var wakeBtn = document.getElementById('wakeServerBtn');
+    if (wakeBtn) wakeBtn.onclick = wakeServerNow;
+  };
+
+  function reinitPipeline() {
+    if (!S.ws || S.ws.readyState !== WebSocket.OPEN) return;
+    var provider = S.settings.transcriptionProvider === 'openai' ? 'openai' : 'groq';
+    // Reset stale provider-specific pills before new sys_status arrives.
+    var fePill = document.getElementById('sPillEndpoint');
+    if (fePill) fePill.style.display = 'none';
+    _modelProvider = provider;
+    setPill('sPillModel', 'ok', 'Ready');
+    S.ws.send(JSON.stringify({
+      type: 'init',
+      sessionId: _clientSessionId,
+      preferredSurah: parseInt(S.settings.defaultSurah || '0'),
+      lang: (S.settings.lang || '').trim() || null,
+      pipelineVersion: S.settings.pipelineVersion || 'v4',
+      fastMode: _fastMode,
+      slowMode: _slowMode,
+      practiceMode: _practiceMode,
+      taraweehMode: _taraweehMode,
+      transcriptionProvider: provider,
+      groqApiKey: (S.settings.keyMode === 'byok' ? (S.settings.groqApiKey || '').trim() : '') || null,
+      openaiApiKey: (S.settings.keyMode === 'byok' ? (S.settings.openaiApiKey || '').trim() : '') || null,
+    }));
+    S.ws.send(JSON.stringify({ type: 'set_fast_mode', enabled: _fastMode }));
+    S.ws.send(JSON.stringify({ type: 'set_slow_mode', enabled: _slowMode }));
+    setReciteMode(_reciteMode);
+    if (S.isRecording) S.ws.send(JSON.stringify({ type: 'start' }));
+  }
+
+  window.hideSettings = function () {
+    S.settings.lang = sanitizeTranslationLang(document.getElementById('settingLang').value);
+    S.settings.defaultSurah = document.getElementById('settingSurah').value;
+    S.settings.pipelineVersion = sanitizePipelineVersion(document.getElementById('settingPipeline').value);
+    S.settings.groqApiKey = (document.getElementById('settingGroqKey').value || '').trim();
+    var oaiEl = document.getElementById('settingOpenAIKey');
+    S.settings.openaiApiKey = oaiEl ? (oaiEl.value || '').trim() : (S.settings.openaiApiKey || '');
+    S.settings.transcriptionProvider =
+      document.getElementById('btnProviderOpenAI').classList.contains('active') ? 'openai' : 'groq';
+    S.settings.glassesBottom = document.getElementById('btnBottomTranslit').classList.contains('active')
+      ? 'transliteration' : 'transliteration';
+    S.settings.forcePhoneMic = _backendStatusInfo.mobileOnlyMode
+      ? true
+      : document.getElementById('btnPhoneMic').classList.contains('active');
+    saveSettings();
+    reinitPipeline();
+    document.getElementById('settingsView').style.display = 'none';
+    document.getElementById('mainView').style.display = 'block';
+  };
+
+  function checkBackend() {
+    var url = (getWsUrl()).replace(/^ws/, 'http').replace(/\/ws$/, '');
+    var el = document.getElementById('backendStatus');
+    fetch(url + '/api/status').then(function (r) { return r.json(); }).then(function (s) {
+      el.textContent = '✓ Service online (live)';
+      el.style.color = 'var(--tc-green)';
+      applyBackendModeSettings(s || {});
+      updateEndpointLifecycleUI(s.endpointLifecycle || { component: 'model', status: 'unknown' });
+    }).catch(function () {
+      // If realtime socket is already connected, keep status as online despite REST check hiccups.
+      if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+        el.textContent = '✓ Service online (live)';
+        el.style.color = 'var(--tc-green)';
+        return;
+      }
+      el.textContent = '… Service reconnecting';
+      el.style.color = 'var(--tc-orange)';
+      updateEndpointLifecycleUI({ component: 'model', status: 'loading', message: 'Service reconnecting' });
+    });
+  }
+
+  function updateMicStatus() {
+    var el = document.getElementById('micStatusHint');
+    if (!el) return;
+    var useBrowserMic = S.settings.forcePhoneMic || !S.isG2;
+    if (!useBrowserMic && S.isG2) {
+      if (!S.startupPageCreated) {
+        el.textContent = 'G2 startup not ready yet';
+        return;
+      }
+      if (S.g2MicPermissionState === 'granted') {
+        el.textContent = '✓ G2 mic ready';
+        el.style.color = 'var(--tc-green)';
+      } else if (S.g2MicPermissionState === 'denied') {
+        el.textContent = '✕ G2 mic permission blocked';
+        el.style.color = 'var(--tc-red)';
+      } else {
+        el.textContent = 'Tap "Request mic" to grant G2 mic permission';
+        el.style.color = '';
+      }
+      return;
+    }
+    if (!navigator.permissions || !navigator.permissions.query) {
+      el.textContent = 'Tap "Request mic" to grant permission';
+      return;
+    }
+    navigator.permissions.query({ name: 'microphone' }).then(function (r) {
+      el.textContent = r.state === 'granted' ? '\u2713 Mic granted' : r.state === 'denied' ? '\u2715 Mic denied' : 'Mic not yet requested';
+      el.style.color = r.state === 'granted' ? 'var(--tc-green)' : r.state === 'denied' ? 'var(--tc-red)' : '';
+    }).catch(function () {
+      el.textContent = 'Tap "Request mic" to grant permission';
+    });
+  }
+
+  function requestMicFromSettings() {
+    var el = document.getElementById('micStatusHint');
+    var useBrowserMic = S.settings.forcePhoneMic || !S.isG2;
+    if (!useBrowserMic && S.isG2) {
+      if (el) el.textContent = 'Requesting G2 mic...';
+      requestG2MicPermission().then(function () {
+        if (el) { el.textContent = '✓ G2 mic ready'; el.style.color = 'var(--tc-green)'; }
+      }).catch(function (err) {
+        if (el) { el.textContent = '✕ ' + (err && err.message ? err.message : 'G2 mic blocked'); el.style.color = 'var(--tc-red)'; }
+      });
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (el) el.textContent = 'Microphone API not available';
+      return;
+    }
+    if (el) el.textContent = 'Requesting...';
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      if (el) { el.textContent = '\u2713 Mic granted'; el.style.color = 'var(--tc-green)'; }
+    }).catch(function (err) {
+      if (el) { el.textContent = '\u2715 ' + (err.message || 'Mic denied'); el.style.color = 'var(--tc-red)'; }
+    });
+  }
+
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', async function () {
+    // Restore saved theme (from cache; bridge may overwrite once it attaches)
+    var savedTheme = Storage.getItem('qc_theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.getElementById('themeBtn').textContent = '\u263E';
+    }
+
+    S.settings = loadSettings();
+    if (S.settings.paceMode === 'fast' || S.settings.paceMode === 'slow' || S.settings.paceMode === 'follow') {
+      _paceMode = S.settings.paceMode;
+    } else if (S.settings.slowMode) {
+      _paceMode = 'slow';
+    } else if (S.settings.fastMode) {
+      _paceMode = 'fast';
+    } else {
+      _paceMode = 'follow';
+    }
+    _syncPaceFlags();
+    _updatePaceButton();
+    document.getElementById('versionEl').textContent = APP_VERSION + ' ' + (S.settings.pipelineVersion || 'v4').toUpperCase() + (MENTRA_MODE ? ' · Mentra' : '');
+    // Splash: show version, fade out after 1.2s
+    var splashV = document.getElementById('splashVersion');
+    if (splashV) splashV.textContent = APP_VERSION;
+    setTimeout(function () {
+      var sp = document.getElementById('splashScreen');
+      if (!sp) return;
+      sp.style.opacity = '0';
+      setTimeout(function () { sp.style.display = 'none'; }, 450);
+    }, 1200);
+    // Sync main-view glasses-display pills with saved setting. Arabic was removed;
+    // migrate anyone on the old default to transliteration.
+    var savedGlasses = S.settings.glassesBottom;
+    if (savedGlasses !== 'transliteration' && savedGlasses !== 'translation-only') savedGlasses = 'transliteration';
+    setGlassesBottom(savedGlasses);
+    populateSurahs();
+    initWave();
+
+    document.getElementById('recordBtn').addEventListener('click', function () {
+      if (S.isRecording) stopListening();
+      else startListening();
+    });
+    var wakeMainBtn = document.getElementById('wakeServerMainBtn');
+    if (wakeMainBtn) wakeMainBtn.addEventListener('click', wakeServerNow);
+
+    // Connect WS eagerly on load so it's ready when user presses Start
+    connectWS();
+
+    await detectBridge();
+
+    // Permission requests must be user-gesture initiated. Do not auto-start on G2.
+  });
+
+})();
+</script>
 </body>
 </html>

@@ -94,6 +94,7 @@ export class MentraTaraweehSession {
         transliteration: '',
         translation: '',
         confidence: null as number | null,
+        state: { mode: 'SEARCHING' },
       };
     }
     const name = s.surahName || 'Quran';
@@ -107,6 +108,8 @@ export class MentraTaraweehSession {
       transliteration: s.transliteration || '',
       translation: s.translationGlasses || s.translation || '',
       confidence: typeof s.confidence === 'number' ? s.confidence : null,
+      // Full pipeline state for Even-style phone UI (handleServerMsg)
+      state: s,
     };
   }
 
@@ -273,7 +276,14 @@ export class MentraTaraweehSession {
       const secs = Math.ceil(remainingMs / 1000);
       hdr = `${title} ${secs}s`;
     }
-    await this.session.layouts.showReferenceCard({ title: hdr, text });
+    const body = text || ' ';
+    try {
+      // Mentra SDK: showReferenceCard(title, text) — positional, not an object
+      this.session.layouts.showReferenceCard(hdr, body);
+      console.log(`[Mentra] Glasses ← ${hdr.slice(0, 48)}`);
+    } catch (err) {
+      console.error('[Mentra] Glasses display failed:', err);
+    }
   }
 
   private startPageFlip(totalMs: number) {
@@ -317,10 +327,14 @@ export class MentraTaraweehSession {
   private async showWelcome() {
     const mode = this.opts.taraweehMode ? 'Taraweeh' : 'Practice';
     const surah = this.opts.preferredSurah ? `Surah ${this.opts.preferredSurah}` : 'Auto surah';
-    await this.session.layouts.showReferenceCard({
-      title: 'Taraweeh Companion',
-      text: `${mode} · ${surah}\nListening…\n\nTap: next page\nLong press: pause`,
-    });
+    try {
+      this.session.layouts.showReferenceCard(
+        'Taraweeh Companion',
+        `${mode} · ${surah}\nListening…\n\nTap: next page\nLong press: pause`,
+      );
+    } catch (err) {
+      console.error('[Mentra] Welcome display failed:', err);
+    }
   }
 }
 

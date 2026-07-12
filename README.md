@@ -64,6 +64,9 @@ Paste the ngrok **HTTPS** URL into console.mentra.glass → your app → **Publi
 2. Install / start **Taraweeh Companion**
 3. App **Settings** on phone: mode, surah hint, BYOK keys if needed
 4. Start the app and recite — verses appear on glasses
+5. **Webview URL** (console → MiniApp / Webview):  
+   `https://YOUR_HOST/webview`  
+   That page is the Even Hub phone UI (verse panel, prev/next), adapted for Mentra — it polls `/api/live`; mic and glasses stay on MentraOS.
 
 ---
 
