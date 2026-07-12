@@ -893,6 +893,15 @@ export class AudioPipeline {
 
   audioReturn() {
     if (this.state.mode !== 'PAUSED') return;
+    // Paused during search (no verse yet) → SEARCHING, not empty RESUMING.
+    if (!(this._pausedDisplaySurah > 0 && this._pausedDisplayAyah > 0)) {
+      this.state = { ...createState(), mode: 'SEARCHING' };
+      this._resetSearchBuf();
+      this.processing = false;
+      console.log('[Pipeline] Resumed → SEARCHING');
+      this._emitState(null, null);
+      return;
+    }
     // Only snap to Whisper if it moved AHEAD of where we paused.
     // Whisper is always ~6-12s behind the display, so snapping to it
     // on a quick pause/resume would jump backward. Keep display position

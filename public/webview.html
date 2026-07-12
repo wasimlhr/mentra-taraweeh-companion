@@ -2492,8 +2492,9 @@ function mentraConnectLive() {
     var locked = document.getElementById('lockedContent');
     var confRow = document.getElementById('confRow');
 
-    // Show verse panel when LOCKED, RESUMING, or when we have a strong candidate (>=40%), or user searching
-    var showVerse = state.mode === 'LOCKED' || state.mode === 'RESUMING'
+    // Show verse panel when LOCKED, RESUMING with real verse content, candidate, or user searching
+    var showVerse = state.mode === 'LOCKED'
+      || (state.mode === 'RESUMING' && state.arabic && state.surah && state.ayah)
       || (state.isCandidate && state.arabic)
       || (state.mode === 'SEARCHING' && state.userSearching && state.arabic);
 
