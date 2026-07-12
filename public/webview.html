@@ -1279,9 +1279,14 @@ function mentraConnectLive() {
             }
           }
           var label = data.ref || data.mode || 'Listening…';
-          if (label !== _mentraLastRef) {
+          if (data.alert && data.alert.message) {
+            setStatus(data.alert.message, data.alert.level === 'error' ? 'error' : 'warn');
+            setPill('sPillModel', data.alert.level === 'error' ? 'err' : 'warn', data.alert.message.slice(0, 28));
+            if (typeof log === 'function') log(data.alert.message, data.alert.level === 'error' ? 'err' : 'warn');
+          } else if (label !== _mentraLastRef) {
             _mentraLastRef = label;
             setStatus(label);
+            setPill('sPillModel', 'ok', 'Ready');
           }
         })
         .catch(function (err) {

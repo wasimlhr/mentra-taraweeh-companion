@@ -1168,7 +1168,10 @@ export class AudioPipeline {
       } catch (err) {
         console.error('[Pipeline] Transcription error:', err.message?.substring(0, 100));
         this._handleTranscriptionError(err);
-        this.onError(err.message);
+        // Rate limits are handled via onStatus cooldown — don't spam onError
+        // (Mentra was wiping the glasses verse with a full-screen error wall).
+        const is429 = err && (err.status === 429 || /HTTP 429|rate.?limit/i.test(err.message || ''));
+        if (!is429) this.onError(err.message);
         if (!stale()) { this._advanceSearchWindow(); this.processing = false; }
         return;
       }

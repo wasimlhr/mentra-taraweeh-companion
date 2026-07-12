@@ -48,6 +48,12 @@ export class MentraTaraweehSession {
   private lockingTimer: ReturnType<typeof setInterval> | null = null;
   private cleanups: Array<() => void> = [];
   private opts: SessionControllerOptions;
+  /** Soft status for phone webview (rate limit, model errors) — does not wipe glasses. */
+  private lastAlert: {
+    level: 'info' | 'warn' | 'error';
+    message: string;
+    untilMs: number;
+  } | null = null;
 
   constructor(
     private session: AppSession,
@@ -87,6 +93,13 @@ export class MentraTaraweehSession {
     const reciteMode = this.opts.practiceMode
       ? 'practice'
       : 'taraweeh';
+    const alert =
+      this.lastAlert && this.lastAlert.untilMs > Date.now()
+        ? {
+            level: this.lastAlert.level,
+            message: this.lastAlert.message,
+          }
+        : null;
     const s = this.lastState;
     if (!s) {
       return {
@@ -98,6 +111,7 @@ export class MentraTaraweehSession {
         transliteration: '',
         translation: '',
         confidence: null as number | null,
+        alert,
         state: { mode: 'SEARCHING' },
       };
     }
@@ -130,8 +144,17 @@ export class MentraTaraweehSession {
       transliteration: s.transliteration || '',
       translation: s.translationGlasses || s.translation || '',
       confidence: typeof s.confidence === 'number' ? s.confidence : null,
+      alert,
       state: safeState,
     };
+  }
+
+  private setAlert(
+    level: 'info' | 'warn' | 'error',
+    message: string,
+    ttlMs = 20000,
+  ) {
+    this.lastAlert = { level, message, untilMs: Date.now() + ttlMs };
   }
 
   /** Switch Taraweeh ↔ Practice without tearing down the Mentra session. */
@@ -257,10 +280,49 @@ export class MentraTaraweehSession {
       onStatus: (s) => {
         if (s.type === 'taraweeh_mode' || s.type === 'practice_mode') return;
         console.log('[Pipeline status]', s);
+        const httpStatus = (s as { httpStatus?: number }).httpStatus;
+        const msg = String((s as { message?: string }).message || '');
+        const retryAfterMs = Number((s as { retryAfterMs?: number }).retryAfterMs || 0);
+        if (httpStatus === 429 || /rate.?limit/i.test(msg)) {
+          const waitS = Math.max(1, Math.round((retryAfterMs || 15000) / 1000));
+          this.setAlert(
+            'warn',
+            `Groq rate limit — waiting ~${waitS}s (verse stays on glasses)`,
+            retryAfterMs || 20000,
+          );
+          // Do NOT replace glasses with an error wall — keep last verse.
+          return;
+        }
+        if ((s as { component?: string }).component === 'model' && (s as { status?: string }).status === 'error' && msg) {
+          this.setAlert('error', msg, 15000);
+        }
+        if ((s as { type?: string }).type === 'session_quota' && msg) {
+          this.setAlert(
+            (s as { status?: string }).status === 'error' ? 'error' : 'warn',
+            msg,
+            30000,
+          );
+        }
       },
       onError: (err: string) => {
         console.error('[Pipeline]', err);
-        void this.session.layouts.showTextWall(`Error: ${err}`);
+        // Rate limits already handled in onStatus — never wipe glasses for those.
+        if (/429|rate.?limit/i.test(err)) {
+          this.setAlert('warn', 'Groq rate limit — backing off', 20000);
+          return;
+        }
+        this.setAlert('error', err.slice(0, 120), 15000);
+        // Soft flash only — then restore last verse if we have one
+        try {
+          this.session.layouts.showTextWall(`⚠ ${err.slice(0, 80)}`, {
+            durationMs: 2500,
+          });
+        } catch {
+          /* ignore */
+        }
+        if (this.display) {
+          setTimeout(() => void this.pushDisplay(), 2600);
+        }
       },
     });
 
