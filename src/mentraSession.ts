@@ -100,6 +100,23 @@ export class MentraTaraweehSession {
     const name = s.surahName || 'Quran';
     const ref =
       s.surah && s.ayah ? `${name} ${s.surah}:${s.ayah}` : name;
+    // Plain JSON only — Mentra phone UI polls this every second.
+    let safeState: Record<string, unknown> = { mode: s.mode || 'SEARCHING' };
+    try {
+      safeState = JSON.parse(JSON.stringify(s)) as Record<string, unknown>;
+    } catch {
+      safeState = {
+        mode: s.mode,
+        surah: s.surah,
+        ayah: s.ayah,
+        surahName: s.surahName,
+        arabic: s.arabic,
+        transliteration: s.transliteration,
+        translation: s.translationGlasses || s.translation,
+        confidence: s.confidence,
+        isCandidate: s.isCandidate,
+      };
+    }
     return {
       active: true,
       mode: s.mode || 'SEARCHING',
@@ -108,8 +125,7 @@ export class MentraTaraweehSession {
       transliteration: s.transliteration || '',
       translation: s.translationGlasses || s.translation || '',
       confidence: typeof s.confidence === 'number' ? s.confidence : null,
-      // Full pipeline state for Even-style phone UI (handleServerMsg)
-      state: s,
+      state: safeState,
     };
   }
 

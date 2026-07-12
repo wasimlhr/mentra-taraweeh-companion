@@ -1132,47 +1132,86 @@ body {
   var MENTRA_MODE = true;
   var _mentraPollTimer = null;
   var _mentraLastRef = '';
+  var _mentraFailCount = 0;
+
+  function mentraDecodeJwtPayload(jwt) {
+    try {
+      var part = (jwt || '').split('.')[1];
+      if (!part) return null;
+      var b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    } catch (_) {
+      return null;
+    }
+  }
 
   function mentraTokens() {
     var params = new URLSearchParams(window.location.search);
     var signed = params.get('aos_signed_user_token') || '';
     var front = params.get('aos_frontend_token') || '';
+    var temp = params.get('aos_temp_token') || '';
+    // Mentra React extracts frontendToken from the signed JWT payload.
+    if (!front && signed) {
+      var payload = mentraDecodeJwtPayload(signed);
+      if (payload) {
+        front = payload.frontendToken || payload.frontend_token || payload.token || '';
+      }
+    }
     try {
       if (signed) localStorage.setItem('mentra_signed_token', signed);
       else signed = localStorage.getItem('mentra_signed_token') || '';
       if (front) localStorage.setItem('mentra_frontend_token', front);
       else front = localStorage.getItem('mentra_frontend_token') || '';
+      if (temp) localStorage.setItem('mentra_temp_token', temp);
+      else temp = localStorage.getItem('mentra_temp_token') || '';
     } catch (_) {}
-    return { signed: signed, front: front };
+    return { signed: signed, front: front, temp: temp };
   }
 
   function mentraAuthHeaders() {
     var t = mentraTokens();
     var h = { 'Accept': 'application/json' };
-    var token = t.front || t.signed;
-    if (token) h['Authorization'] = 'Bearer ' + token;
+    // Only send Mentra frontendToken as Bearer — never the signed JWT
+    // (large JWTs in Authorization break some Mentra WebViews).
+    if (t.front) h['Authorization'] = 'Bearer ' + t.front;
     return h;
   }
 
   function mentraApiUrl(path) {
     var t = mentraTokens();
+    var origin = window.location.origin || '';
     var q = [];
     if (t.signed) q.push('aos_signed_user_token=' + encodeURIComponent(t.signed));
     if (t.front) q.push('aos_frontend_token=' + encodeURIComponent(t.front));
-    return path + (q.length ? ('?' + q.join('&')) : '');
+    if (t.temp) q.push('aos_temp_token=' + encodeURIComponent(t.temp));
+    return origin + path + (q.length ? ('?' + q.join('&')) : '');
   }
 
   function mentraConnectLive() {
     if (_mentraPollTimer) { clearInterval(_mentraPollTimer); _mentraPollTimer = null; }
+    _mentraFailCount = 0;
     setWsPill('warn', 'Mentra: connecting…');
     setStatus('Connecting to Mentra session…');
 
     function poll() {
       fetch(mentraApiUrl('/api/live'), { headers: mentraAuthHeaders(), credentials: 'include' })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          return r.text().then(function (text) {
+            var data = null;
+            try { data = text ? JSON.parse(text) : null; } catch (_) {}
+            if (!r.ok) {
+              throw new Error('HTTP ' + r.status + (text ? (': ' + text.slice(0, 80)) : ''));
+            }
+            if (!data) throw new Error('Non-JSON live response');
+            return data;
+          });
+        })
         .then(function (data) {
+          _mentraFailCount = 0;
           if (!data || data.ok === false) {
             setWsPill('err', 'Mentra: error');
+            setStatus((data && data.message) || 'Live API error');
             return;
           }
           if (!data.active) {
@@ -1188,7 +1227,13 @@ body {
             translation: data.translation || '',
             confidence: data.confidence
           };
-          handleServerMsg({ type: 'state', state: state });
+          try {
+            handleServerMsg({ type: 'state', state: state });
+          } catch (uiErr) {
+            if (typeof log === 'function') {
+              log('Phone UI update failed: ' + (uiErr && uiErr.message || uiErr), 'err');
+            }
+          }
           var label = data.ref || data.mode || 'Listening…';
           if (label !== _mentraLastRef) {
             _mentraLastRef = label;
@@ -1196,14 +1241,19 @@ body {
           }
         })
         .catch(function (err) {
+          _mentraFailCount++;
+          var detail = (err && err.message) ? String(err.message) : 'network error';
           setWsPill('err', 'Mentra: offline');
-          setStatus('Live API unreachable', 'error');
-          if (typeof log === 'function') log('Mentra poll: ' + (err && err.message || err), 'err');
+          // Soften first blips during Mentra WebView / Railway warmup
+          if (_mentraFailCount >= 2) {
+            setStatus('Live API: ' + detail.slice(0, 60), 'error');
+          }
+          if (typeof log === 'function') log('Mentra poll: ' + detail, 'err');
         });
     }
 
     poll();
-    _mentraPollTimer = setInterval(poll, 800);
+    _mentraPollTimer = setInterval(poll, 1000);
     S.ws = { readyState: 1, send: function () {}, close: function () {} };
     S.isRecording = true;
   }

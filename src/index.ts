@@ -43,29 +43,54 @@ class TaraweehMentraApp extends AppServer {
   private setupWebviewRoutes() {
     const expressApp = this.getExpressApp();
 
+    // Mentra WebView / cross-origin phone UI
+    expressApp.use('/api', (req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Authorization, Content-Type, Accept',
+      );
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+      if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+      next();
+    });
+
     expressApp.get('/webview', (_req, res) => {
       res.sendFile(WEBVIEW_FILE);
     });
 
     expressApp.get('/api/live', (req: AuthenticatedRequest, res) => {
-      const userId = req.authUserId;
-      if (!userId) {
-        return res.json({
-          ok: true,
+      try {
+        const userId = req.authUserId;
+        if (!userId) {
+          return res.json({
+            ok: true,
+            active: false,
+            message: 'Open Quran Companion from Mentra to start a session',
+          });
+        }
+        const controller = sessionsByUser.get(userId);
+        if (!controller) {
+          return res.json({
+            ok: true,
+            active: false,
+            userId,
+            message: 'Session starting…',
+          });
+        }
+        return res.json({ ok: true, userId, ...controller.getLiveSnapshot() });
+      } catch (err) {
+        console.error('[Mentra] /api/live failed:', err);
+        return res.status(500).json({
+          ok: false,
           active: false,
-          message: 'Open Quran Companion from Mentra to start a session',
+          message: 'Live snapshot failed',
         });
       }
-      const controller = sessionsByUser.get(userId);
-      if (!controller) {
-        return res.json({
-          ok: true,
-          active: false,
-          userId,
-          message: 'Session starting…',
-        });
-      }
-      return res.json({ ok: true, userId, ...controller.getLiveSnapshot() });
     });
 
     expressApp.post('/api/next', (req: AuthenticatedRequest, res) => {
