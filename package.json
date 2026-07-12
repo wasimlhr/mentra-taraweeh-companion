@@ -1,0 +1,28 @@
+{
+  "name": "mentra-taraweeh-companion",
+  "version": "1.0.0",
+  "description": "Taraweeh Companion — MentraOS app for G1/G2 smart glasses",
+  "type": "module",
+  "scripts": {
+    "postinstall": "cd backend && npm install",
+    "start": "bun src/index.ts",
+    "kill-port": "node scripts/kill-port-3000.js",
+    "dev": "node scripts/kill-port-3000.js && bun --watch src/index.ts",
+    "mentra": "mentra",
+    "publish": "mentra app publish com.wasimlhr.taraweeh"
+  },
+  "dependencies": {
+    "@mentra/sdk": "latest",
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "@mentra/cli": "^1.0.3",
+    "@types/node": "^22.15.21",
+    "bun-types": "latest",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.1.0"
+  }
+}

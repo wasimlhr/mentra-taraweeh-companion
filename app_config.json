@@ -1,0 +1,99 @@
+{
+  "description": "Real-time Quran recitation recognition — Arabic, transliteration, and translation on smart glasses.",
+  "permissions": [
+    {
+      "type": "MICROPHONE",
+      "description": "Listen to live recitation for verse matching"
+    }
+  ],
+  "settings": [
+    {
+      "type": "group",
+      "key": "recitation_group",
+      "label": "Recitation"
+    },
+    {
+      "type": "select",
+      "key": "recite_mode",
+      "label": "Mode",
+      "description": "Taraweeh follows the imam with auto-advance timer. Practice snaps display to each heard verse.",
+      "defaultValue": "taraweeh",
+      "options": [
+        { "label": "Taraweeh (follow imam)", "value": "taraweeh" },
+        { "label": "Practice (snap to verse)", "value": "practice" }
+      ]
+    },
+    {
+      "type": "text",
+      "key": "preferred_surah",
+      "label": "Surah hint (1–114, or 0)",
+      "description": "Optional surah number to speed up initial lock. Use 0 for auto-detect any surah.",
+      "defaultValue": "0"
+    },
+    {
+      "type": "select",
+      "key": "glasses_bottom",
+      "label": "Second line on glasses",
+      "defaultValue": "transliteration",
+      "options": [
+        { "label": "Transliteration", "value": "transliteration" },
+        { "label": "Translation only", "value": "translation-only" }
+      ]
+    },
+    {
+      "type": "toggle",
+      "key": "fast_mode",
+      "label": "Fast recitor",
+      "description": "Shorter display timers for quick recitation (Taraweeh mode).",
+      "defaultValue": false
+    },
+    {
+      "type": "toggle",
+      "key": "slow_mode",
+      "label": "Slow recitor",
+      "description": "Longer display timers for measured recitation (Taraweeh mode).",
+      "defaultValue": false
+    },
+    {
+      "type": "group",
+      "key": "transcription_group",
+      "label": "Transcription (Whisper)"
+    },
+    {
+      "type": "select",
+      "key": "key_mode",
+      "label": "API key mode",
+      "description": "Shared uses server keys from your .env. BYOK uses your personal Groq/OpenAI key below.",
+      "defaultValue": "shared",
+      "options": [
+        { "label": "Shared (server keys)", "value": "shared" },
+        { "label": "Bring your own key (BYOK)", "value": "byok" }
+      ]
+    },
+    {
+      "type": "select",
+      "key": "transcription_provider",
+      "label": "BYOK provider",
+      "description": "Only used when API key mode is BYOK.",
+      "defaultValue": "groq",
+      "options": [
+        { "label": "Groq (whisper-large-v3-turbo)", "value": "groq" },
+        { "label": "OpenAI (whisper-1)", "value": "openai" }
+      ]
+    },
+    {
+      "type": "text",
+      "key": "groq_api_key",
+      "label": "Groq API key",
+      "description": "gsk_… — only used in BYOK mode with Groq provider.",
+      "defaultValue": ""
+    },
+    {
+      "type": "text",
+      "key": "openai_api_key",
+      "label": "OpenAI API key",
+      "description": "sk-… — only used in BYOK mode with OpenAI provider.",
+      "defaultValue": ""
+    }
+  ]
+}
