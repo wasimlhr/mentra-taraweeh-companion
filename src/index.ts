@@ -118,6 +118,34 @@ class TaraweehMentraApp extends AppServer {
       controller.setReciteMode(mode);
       res.json({ ok: true, reciteMode: mode });
     });
+
+    expressApp.post('/api/pause', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      const controller = userId ? sessionsByUser.get(userId) : undefined;
+      controller?.pause();
+      res.json({ ok: !!controller });
+    });
+
+    expressApp.post('/api/resume', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      const controller = userId ? sessionsByUser.get(userId) : undefined;
+      controller?.resume();
+      res.json({ ok: !!controller });
+    });
+
+    expressApp.post('/api/reset', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      const controller = userId ? sessionsByUser.get(userId) : undefined;
+      controller?.resetSearch();
+      res.json({ ok: !!controller });
+    });
+
+    expressApp.post('/api/toggle-pause', (req: AuthenticatedRequest, res) => {
+      const userId = req.authUserId;
+      const controller = userId ? sessionsByUser.get(userId) : undefined;
+      controller?.togglePause();
+      res.json({ ok: !!controller, mode: controller?.getLiveSnapshot()?.mode });
+    });
   }
 
   protected async onSession(

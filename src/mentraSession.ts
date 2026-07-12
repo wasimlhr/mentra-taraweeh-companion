@@ -156,6 +156,30 @@ export class MentraTaraweehSession {
     this.pipeline?.manualPrev?.();
   }
 
+  pause() {
+    this.pipeline?.pause?.();
+  }
+
+  resume() {
+    this.pipeline?.audioReturn?.();
+  }
+
+  resetSearch() {
+    this.pipeline?.reset?.();
+    this.pageIdx = 0;
+    this.display = null;
+    this.lastState = null;
+    void this.session.layouts.showTextWall('Reset — searching…');
+  }
+
+  togglePause() {
+    if (this.lastState?.mode === 'PAUSED') {
+      this.resume();
+    } else {
+      this.pause();
+    }
+  }
+
   private attachHandlers() {
     this.cleanups.push(
       this.session.events.onAudioChunk((chunk) => {
@@ -170,7 +194,8 @@ export class MentraTaraweehSession {
     this.cleanups.push(
       this.session.events.onButtonPress((data) => {
         if (data.pressType === 'long') {
-          this.pipeline?.pause();
+          // Long press toggles pause / resume
+          this.togglePause();
           return;
         }
         this.onShortTap();
@@ -198,7 +223,7 @@ export class MentraTaraweehSession {
       return;
     }
     if (this.lastState?.mode === 'PAUSED') {
-      this.pipeline?.start();
+      this.resume();
       return;
     }
     this.pipeline?.manualAdvance?.();
@@ -366,7 +391,7 @@ export class MentraTaraweehSession {
     try {
       this.session.layouts.showReferenceCard(
         'Taraweeh Companion',
-        `${mode} · ${surah}\nListening…\n\nTap: next page\nLong press: pause`,
+        `${mode} · ${surah}\nListening…\n\nTap: next / resume\nLong press: pause`,
       );
     } catch (err) {
       console.error('[Mentra] Welcome display failed:', err);

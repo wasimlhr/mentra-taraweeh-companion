@@ -924,6 +924,7 @@ body {
   <div id="waveRow"></div>
 
   <button id="recordBtn" disabled>Detecting glasses...</button>
+  <button id="mentraResetBtn" class="back-btn btn-arrow" style="display:none;margin-top:8px;font-size:13px" type="button">↺ Reset search</button>
   <button id="wakeServerMainBtn" class="back-btn btn-primary btn-arrow" style="display:none;margin-top:8px;font-size:13px">Wake server</button>
 
   <!-- Glasses second-line selector (Arabic / Transliteration / English only) -->
@@ -1226,6 +1227,16 @@ body {
               _taraweehMode = data.reciteMode === 'taraweeh';
               _practiceMode = data.reciteMode === 'practice';
               _updateReciteModeUI();
+            }
+          }
+          var recBtn = document.getElementById('recordBtn');
+          if (recBtn && MENTRA_MODE) {
+            if (data.mode === 'PAUSED') {
+              recBtn.textContent = '▶ Resume';
+              recBtn.classList.remove('recording');
+            } else {
+              recBtn.textContent = '⏸ Pause';
+              recBtn.classList.add('recording');
             }
           }
           var state = data.state || {
@@ -3385,15 +3396,18 @@ body {
       setPill('sPillG2', 'ok', 'Mentra');
       var btn = document.getElementById('recordBtn');
       if (btn) {
-        btn.textContent = 'Mentra mic · always on';
-        btn.disabled = true;
+        btn.textContent = '⏸ Pause';
+        btn.disabled = false;
         btn.classList.add('recording');
+        btn.title = 'Pause / resume display (Mentra mic stays on)';
       }
+      var resetBtn = document.getElementById('mentraResetBtn');
+      if (resetBtn) resetBtn.style.display = '';
       var idle = document.getElementById('matchIdle');
       var panel = document.getElementById('matchPanel');
       if (idle) idle.style.display = 'none';
       if (panel) panel.style.display = '';
-      setStatus('Listening via Mentra (no phone Start/Stop)');
+      setStatus('Listening via Mentra — Pause / Reset below');
       _updateReciteModeUI();
       return;
     }
@@ -3935,9 +3949,30 @@ body {
     initWave();
 
     document.getElementById('recordBtn').addEventListener('click', function () {
+      if (MENTRA_MODE) {
+        fetch(mentraApiUrl('/api/toggle-pause'), {
+          method: 'POST',
+          headers: mentraAuthHeaders(),
+          credentials: 'include',
+        }).catch(function () {});
+        return;
+      }
       if (S.isRecording) stopListening();
       else startListening();
     });
+    var mentraResetBtn = document.getElementById('mentraResetBtn');
+    if (mentraResetBtn) {
+      mentraResetBtn.addEventListener('click', function () {
+        if (!MENTRA_MODE) return;
+        fetch(mentraApiUrl('/api/reset'), {
+          method: 'POST',
+          headers: mentraAuthHeaders(),
+          credentials: 'include',
+        }).then(function () {
+          setStatus('Reset — searching for next verse…');
+        }).catch(function () {});
+      });
+    }
     var wakeMainBtn = document.getElementById('wakeServerMainBtn');
     if (wakeMainBtn) wakeMainBtn.addEventListener('click', wakeServerNow);
 
