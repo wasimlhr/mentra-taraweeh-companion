@@ -142,8 +142,14 @@ export class MentraTaraweehSession {
     if (!this.pipeline) return;
     if (practice) {
       this.pipeline.setPracticeMode?.(true);
+      // Clear stale phone/glasses verse from prior taraweeh RESUMING
+      this.pageIdx = 0;
+      this.display = null;
+      this.lastState = { mode: 'SEARCHING' } as VerseDisplayState;
+      void this.session.layouts.showTextWall('Practice — recite any verse…');
     } else {
       this.pipeline.setTaraweehMode?.(true);
+      void this.session.layouts.showTextWall('Taraweeh mode');
     }
     console.log(`[Mentra] Recite mode → ${mode}`);
   }

@@ -100,6 +100,15 @@ export function processWhisperResult(whisperText, state, options = {}) {
     case 'LOCKED':
       return handleLocked(whisperText, state, fastMode, opts);
     case 'RESUMING':
+      // Practice never uses taraweeh RESUMING resync — treat as fresh global search.
+      if (opts.practiceMode) {
+        return handleSearching(
+          whisperText,
+          { ...state, mode: 'SEARCHING' },
+          0,
+          { ...opts, freshRun: true },
+        );
+      }
       return handleResuming(whisperText, state, opts);
     default:
       return handleSearching(whisperText, state, preferredSurah, opts);

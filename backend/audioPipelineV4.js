@@ -442,17 +442,40 @@ export class AudioPipeline {
     }
     if (this.practiceMode) {
       this._cancelReadAdvance();
-      // Snap display to heard position — no timer drift in Practice.
-      if (this._whisperSurah > 0 && this._whisperAyah > 0) {
-        this._displaySurah = this._whisperSurah;
-        this._displayAyah  = this._whisperAyah;
-        if (this.state.mode === 'LOCKED') {
+      // Mentra mode switch often lands here from Taraweeh RESUMING/PAUSED with
+      // no verse — that stuck Match:resuming forever. Practice needs a clean
+      // global SEARCHING slate unless we already have a real locked verse.
+      const hasVerse = this.state.mode === 'LOCKED'
+        && this.state.surah > 0 && this.state.ayah > 0;
+      if (hasVerse) {
+        if (this._whisperSurah > 0 && this._whisperAyah > 0) {
+          this._displaySurah = this._whisperSurah;
+          this._displayAyah  = this._whisperAyah;
           this.state = {
             ...this.state,
             surah: this._whisperSurah,
             ayah: this._whisperAyah,
           };
         }
+        this._practiceFreshRun = false;
+        this._practiceLastMatchMs = Date.now();
+        this._emitState(null, null);
+      } else {
+        console.log(`[Pipeline] Practice ON — reset SEARCHING (was ${this.state.mode})`);
+        this._practiceFreshRun = true;
+        this._practiceLastMatchMs = 0;
+        this._userSearchingDisplay = false;
+        this._whisperSurah = 0;
+        this._whisperAyah  = 0;
+        this._displaySurah = 0;
+        this._displayAyah  = 0;
+        this._lockedInFlight = 0;
+        this._lockedLastAppliedSeq = 0;
+        this._lockedBuf = Buffer.alloc(0);
+        this._resetSearchBuf();
+        this.processing = false;
+        this._searchGen = (this._searchGen || 0) + 1;
+        this.state = { ...createState(), mode: 'SEARCHING' };
         this._emitState(null, null);
       }
     }
