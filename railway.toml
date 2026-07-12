@@ -1,6 +1,6 @@
 [build]
-builder = "NIXPACKS"
-buildCommand = "bun install && cd backend && npm install"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "bun src/index.ts"
