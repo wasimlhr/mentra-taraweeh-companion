@@ -38,8 +38,8 @@ export type DisplayOptions = {
 };
 
 const DEFAULT_OPTS: Required<DisplayOptions> = {
-  charsPerLine: 36,
-  linesPerPage: 5,
+  charsPerLine: 32,
+  linesPerPage: 7,
   glassesBottom: 'transliteration',
   appTitle: 'Quran',
 };

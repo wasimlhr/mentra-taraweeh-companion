@@ -338,11 +338,11 @@ export class MentraTaraweehSession {
       hdr = `${title} · ${secs}s`;
     }
     const body = (text || ' ').trim() || ' ';
-    // TextWall = full main view. ReferenceCard sat top-left; DoubleTextWall
-    // skewed right on G1. Keep one simple block.
-    const wall = `${hdr}\n${body}`;
+    // Single full TextWall. Mentra still left-aligns; HUD size is MentraOS
+    // Display Height — we can't move the container, only fill it with text.
+    const wall = `${hdr}\n────────\n${body}`;
     try {
-      this.session.layouts.showTextWall(wall);
+      this.session.layouts.showTextWall(wall, { priority: true });
       console.log(`[Mentra] Glasses ← ${hdr.slice(0, 48)}`);
     } catch (err) {
       console.error('[Mentra] Glasses display failed:', err);

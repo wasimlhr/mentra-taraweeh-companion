@@ -3981,7 +3981,22 @@ function mentraConnectLive() {
 
     document.getElementById('recordBtn').addEventListener('click', function () {
       if (MENTRA_MODE) {
-        fetch(mentraApiUrl('/api/toggle-pause'), {
+        var btn = document.getElementById('recordBtn');
+        var label = (btn && btn.textContent) || '';
+        var wantPause = label.indexOf('Pause') >= 0 || label.indexOf('⏸') >= 0;
+        // Optimistic UI so the button feels instant
+        if (btn) {
+          if (wantPause) {
+            btn.textContent = '▶ Resume';
+            btn.classList.remove('recording');
+            setStatus('Paused');
+          } else {
+            btn.textContent = '⏸ Pause';
+            btn.classList.add('recording');
+            setStatus('Listening…');
+          }
+        }
+        fetch(mentraApiUrl(wantPause ? '/api/pause' : '/api/resume'), {
           method: 'POST',
           headers: mentraAuthHeaders(),
           credentials: 'include',

@@ -867,7 +867,10 @@ export class AudioPipeline {
   }
 
   pause() {
-    if (this.state.mode !== 'LOCKED' && this.state.mode !== 'RESUMING') return;
+    if (this.state.mode === 'PAUSED') {
+      this._emitState(null, null);
+      return;
+    }
     // Freeze display and timer — but keep listening to Whisper in the background
     // so we track where the reciter is. On resume, snap to the latest Whisper position.
     // Save remaining timer so we can resume it (not restart from scratch)
@@ -880,12 +883,11 @@ export class AudioPipeline {
     this._cancelReadAdvance();
     this._pausedWhisperSurah = this._whisperSurah;
     this._pausedWhisperAyah  = this._whisperAyah;
-    this._pausedDisplaySurah = this._displaySurah;
-    this._pausedDisplayAyah  = this._displayAyah;
-    // Route through the state machine reducer — keeps mode transitions in
-    // one place and lets the state machine evolve without pipeline edits.
+    this._pausedDisplaySurah = this._displaySurah || this.state.surah || 0;
+    this._pausedDisplayAyah  = this._displayAyah || this.state.ayah || 0;
+    // Allow pause from SEARCHING / any mode (Mentra phone Pause button).
     this.state = transition(this.state, { type: 'PAUSE' });
-    console.log(`[Pipeline] Paused display at ${this._displaySurah}:${this._displayAyah} (timer remaining: ${this._pausedTimerRemainingMs}ms, Whisper still listening)`);
+    console.log(`[Pipeline] Paused display at ${this._pausedDisplaySurah}:${this._pausedDisplayAyah} (timer remaining: ${this._pausedTimerRemainingMs}ms, Whisper still listening)`);
     this._emitState(null, null);
   }
 
@@ -1531,6 +1533,14 @@ export class AudioPipeline {
           if (anchorResult.surah === this._displaySurah && anchorResult.ayah < minAnchorAyah) {
             finalResult = { ...anchorResult, ayah: minAnchorAyah };
           }
+        }
+        // While user-paused, keep Whisper tracking only — never overwrite PAUSED.
+        if (this.state.mode === 'PAUSED') {
+          if (finalResult._locked) {
+            this._whisperSurah = finalResult.surah;
+            this._whisperAyah = finalResult.ayah;
+          }
+          return;
         }
         this.state = finalResult;
         const realMatch = !!finalResult._locked;
