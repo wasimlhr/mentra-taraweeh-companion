@@ -967,15 +967,15 @@ body {
     <div class="s-row" style="margin-top:12px">
       <span class="s-label">Microphone</span>
       <div class="toggle-group" role="group">
-        <button type="button" class="toggle-btn active" id="btnG2Mic" onclick="setMicSource('g2')">G2 mic</button>
+        <button type="button" class="toggle-btn active" id="btnG2Mic" onclick="setMicSource('g2')">Glasses mic</button>
         <button type="button" class="toggle-btn" id="btnPhoneMic" onclick="setMicSource('phone')">Phone mic</button>
       </div>
-      <span class="s-hint" style="margin-top:4px;display:block">Use G2 mic by default, or Phone mic after permission prompt.</span>
+      <span class="s-hint" style="margin-top:4px;display:block">Glasses mic is default. Phone mic needs MentraOS mic preference (see Mentra app settings).</span>
       <span class="s-hint" id="micStatusHint" style="margin-top:6px;display:block">—</span>
       <button type="button" id="settingMicTest" class="back-btn btn-arrow" style="margin-top:6px;font-size:13px">Request mic permission</button>
     </div>
     <div class="s-warn" style="margin-top:8px;padding:10px 14px;background:var(--bc-accent);border-radius:var(--r);font-size:12px;color:var(--tc-1)">
-      <strong>Note:</strong> G2 and Phone mic both work when permission is granted.
+      <strong>Note:</strong> Mentra streams glasses mic to this app. Phone mic is an MentraOS-level option, not controlled here.
     </div>
   </div>
 
@@ -1189,7 +1189,32 @@ body {
     return origin + path + (q.length ? ('?' + q.join('&')) : '');
   }
 
-  function mentraConnectLive() {
+  
+  function mentraSimplifySettingsUI() {
+    // Hide Even Hub–only settings blocks; Mentra app Settings owns mode/API keys.
+    var hideIds = ['wakeServerRow', 'wakeServerMainBtn'];
+    hideIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    document.querySelectorAll('.s-section, .s-card').forEach(function (el) {
+      var t = (el.textContent || '').toLowerCase();
+      if (t.indexOf('connection') === 0 || t.indexOf('microphone') >= 0 && el.classList.contains('s-section')) {
+        /* keep mic label rename only */
+      }
+    });
+    // Soften settings header note
+    var ver = document.getElementById('settingsVersion');
+    if (ver) {
+      ver.insertAdjacentHTML('beforebegin',
+        '<div class="s-warn" style="margin:12px 0;padding:12px;border-radius:8px;background:var(--bc-2);font-size:13px;line-height:1.4">' +
+        '<strong>Mentra:</strong> Use Mentra app → Quran Companion → Settings for Mode, Surah hint, transliteration, and API keys. ' +
+        'Audio comes from <strong>Glasses mic</strong> (Mentra). Phone mic is only if you change MentraOS mic preference.' +
+        '</div>');
+    }
+  }
+
+function mentraConnectLive() {
     if (_mentraPollTimer) { clearInterval(_mentraPollTimer); _mentraPollTimer = null; }
     _mentraFailCount = 0;
     setWsPill('warn', 'Mentra: connecting…');
@@ -1979,7 +2004,7 @@ body {
 
   function _updateG2StatusPill() {
     if (!S.isG2) return;
-    setPill('sPillG2', 'ok', _ringConnected ? 'G2 + Ring ready' : 'G2 ready');
+    setPill('sPillG2', 'ok', _ringConnected ? 'Glasses + Ring ready' : 'Glasses ready');
   }
 
   function refreshGlassesWelcomeText() {
@@ -2594,7 +2619,7 @@ body {
   }
 
   function updateWave(rms) {
-    // G2 mic RMS ~0.001–0.002 vs PC ~0.05–0.3 — need strong boost for visible meter
+    // Glasses mic RMS ~0.001–0.002 vs PC ~0.05–0.3 — need strong boost for visible meter
     var gain = S.isG2 ? 120 : 3;
     S.waveLevel = Math.max(S.waveLevel * 0.7, Math.min(1, rms * gain));
     var h = Math.max(4, Math.round(4 + S.waveLevel * 44));
@@ -2939,7 +2964,7 @@ body {
 
     // ── Stage 1 log: mic is capturing ─────────────────────────────────────────
     if (_pcmChunkCount === 0) {
-      var src = S.isG2 ? 'G2 mic' : 'browser mic';
+      var src = S.isG2 ? 'Glasses mic' : 'browser mic';
       log('\u25cf Stage 1 \u2014 ' + src + ' capturing (' + u8.byteLength + 'B/frame)', 'ok');
       setPill('sPillConf', 'ok', 'Match: listening');
     }
@@ -2966,7 +2991,7 @@ body {
     queueBridgeCall('audioControl(true)', function () {
       return S.bridge.audioControl(true).then(function () {
         S.g2MicPermissionState = 'granted';
-        log('G2 mic opened', 'ok');
+        log('Glasses mic opened', 'ok');
       });
     });
   }
@@ -3019,7 +3044,7 @@ body {
       return S.bridge.audioControl(true).then(function () {
         S.g2MicPermissionState = 'granted';
         return S.bridge.audioControl(false).then(function () {
-          log('G2 mic permission preflight complete', 'ok');
+          log('Glasses mic permission preflight complete', 'ok');
           return true;
         });
       });
@@ -3306,7 +3331,7 @@ body {
       setStatus('Mic permission required', 'error');
       log('Mic permission failed: ' + msg, 'err');
       if (S.isG2 && !(S.settings.forcePhoneMic || !S.isG2)) {
-        log('Tip: Tap Start once on glasses-connected app to grant G2 mic access.', 'info');
+        log('Tip: Tap Start once on glasses-connected app to grant Glasses mic access.', 'info');
       }
       btn.textContent = S.isG2 ? '\u2192 Start Listening' : '\u2192 Start Listening';
       btn.classList.remove('recording');
@@ -3485,7 +3510,7 @@ body {
 
     if (S.isG2) {
       _updateG2StatusPill();
-      btn.textContent = '\u25CF Start Listening (G2 mic)';
+      btn.textContent = '\u25CF Start Listening (Glasses mic)';
       btn.disabled = false;
 
       // Register event handler (store unsubscribe for cleanup)
@@ -3508,7 +3533,7 @@ body {
       setTimeout(recoverStartupIfBlank, 1200);
     } else {
       log('No G2 — browser mic mode');
-      setPill('sPillG2', '', 'PC mic');
+      setPill('sPillG2', '', 'Phone mic');
       btn.textContent = '\u2192 Start Listening';
       btn.disabled = false;
     }
@@ -3860,13 +3885,13 @@ body {
         return;
       }
       if (S.g2MicPermissionState === 'granted') {
-        el.textContent = '✓ G2 mic ready';
+        el.textContent = '✓ Glasses mic ready';
         el.style.color = 'var(--tc-green)';
       } else if (S.g2MicPermissionState === 'denied') {
-        el.textContent = '✕ G2 mic permission blocked';
+        el.textContent = '✕ Glasses mic permission blocked';
         el.style.color = 'var(--tc-red)';
       } else {
-        el.textContent = 'Tap "Request mic" to grant G2 mic permission';
+        el.textContent = 'Tap "Request mic" to grant Glasses mic permission';
         el.style.color = '';
       }
       return;
@@ -3887,11 +3912,11 @@ body {
     var el = document.getElementById('micStatusHint');
     var useBrowserMic = S.settings.forcePhoneMic || !S.isG2;
     if (!useBrowserMic && S.isG2) {
-      if (el) el.textContent = 'Requesting G2 mic...';
+      if (el) el.textContent = 'Requesting Glasses mic...';
       requestG2MicPermission().then(function () {
-        if (el) { el.textContent = '✓ G2 mic ready'; el.style.color = 'var(--tc-green)'; }
+        if (el) { el.textContent = '✓ Glasses mic ready'; el.style.color = 'var(--tc-green)'; }
       }).catch(function (err) {
-        if (el) { el.textContent = '✕ ' + (err && err.message ? err.message : 'G2 mic blocked'); el.style.color = 'var(--tc-red)'; }
+        if (el) { el.textContent = '✕ ' + (err && err.message ? err.message : 'Glasses mic blocked'); el.style.color = 'var(--tc-red)'; }
       });
       return;
     }

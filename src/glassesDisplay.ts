@@ -1,6 +1,7 @@
 /**
- * Glasses text layout — ported from taraweeh-companion/app/index.html buildGlassesText().
- * G1 display is narrower than G2; constants are tuned for Mentra text layouts.
+ * Glasses text for Mentra layouts (G1/G2 via MentraOS).
+ * Mentra text is left-aligned; DoubleTextWall uses top+bottom halves so content
+ * reads more centered than a tiny ReferenceCard stuck in the corner.
  */
 
 export type VerseDisplayState = {
@@ -27,20 +28,17 @@ export type GlassesDisplay = {
 };
 
 export type DisplayOptions = {
-  /** Chars per line — G1 ~40, G2 ~55 */
   charsPerLine?: number;
-  /** Body lines per page */
   linesPerPage?: number;
-  /** Bottom line: transliteration or translation-only */
   glassesBottom?: 'transliteration' | 'translation-only';
   appTitle?: string;
 };
 
 const DEFAULT_OPTS: Required<DisplayOptions> = {
-  charsPerLine: 42,
-  linesPerPage: 6,
+  charsPerLine: 36,
+  linesPerPage: 5,
   glassesBottom: 'transliteration',
-  appTitle: 'Taraweeh',
+  appTitle: 'Quran',
 };
 
 function clip(s: string, max: number): string {
@@ -65,44 +63,49 @@ function wrapText(text: string, maxLen: number): string[] {
   return lines.length ? lines : [''];
 }
 
+/** Always keep transliteration when requested — never drop it for "long" ayahs. */
 function buildPages(
   translation: string | undefined,
   transliteration: string | undefined,
   opts: Required<DisplayOptions>,
   reserveLines = 0,
 ): string[] {
-  const div = '-'.repeat(opts.charsPerLine);
-  const maxLines = opts.linesPerPage - reserveLines;
+  const div = '·'.repeat(Math.min(24, opts.charsPerLine));
+  const maxLines = Math.max(2, opts.linesPerPage - reserveLines);
+  const wantTlit = opts.glassesBottom === 'transliteration' && !!(transliteration || '').trim();
   const transLines = wrapText(translation || '', opts.charsPerLine);
-  const longAyah = transLines.length > Math.floor(maxLines / 2);
-  const effectiveTransliteration =
-    opts.glassesBottom === 'transliteration' && !longAyah ? transliteration : '';
-  const tlitLines = effectiveTransliteration
-    ? wrapText(effectiveTransliteration, opts.charsPerLine)
-    : [];
-  const tlitBlock = tlitLines.length > 0 ? [div, ...tlitLines] : [];
-  const tlitCost = tlitBlock.length;
+  const tlitLines = wantTlit ? wrapText(transliteration || '', opts.charsPerLine) : [];
 
-  if (transLines.length + tlitCost <= maxLines) {
-    return [transLines.concat(tlitBlock).join('\n')];
+  // Prefer: translation + divider + transliteration on one page when it fits.
+  if (wantTlit) {
+    const combinedCost = transLines.length + 1 + tlitLines.length;
+    if (combinedCost <= maxLines) {
+      return [[...transLines, div, ...tlitLines].join('\n')];
+    }
+    // Translation page(s), then a dedicated transliteration page.
+    const pages: string[] = [];
+    for (let i = 0; i < transLines.length; i += maxLines) {
+      pages.push(transLines.slice(i, i + maxLines).join('\n'));
+    }
+    if (pages.length === 0) pages.push('');
+    pages.push([div, ...tlitLines].join('\n'));
+    return pages;
   }
 
+  if (transLines.length <= maxLines) {
+    return [transLines.join('\n')];
+  }
   const pages: string[] = [];
   for (let i = 0; i < transLines.length; i += maxLines) {
     pages.push(transLines.slice(i, i + maxLines).join('\n'));
   }
-
-  const last = pages[pages.length - 1].split('\n');
-  if (last.length + tlitCost <= maxLines) {
-    pages[pages.length - 1] = `${pages[pages.length - 1]}\n${tlitBlock.join('\n')}`;
-  } else if (tlitCost > 0) {
-    pages.push(tlitBlock.join('\n'));
-  }
   return pages;
 }
 
-function appTitleHdr(opts: Required<DisplayOptions>): string {
-  return opts.appTitle;
+function shortHdr(state: VerseDisplayState, prefix: string): string {
+  const name = state.surahName ? clip(state.surahName, 12) : 'Quran';
+  if (state.surah && state.ayah) return `${prefix}${name} ${state.surah}:${state.ayah}`;
+  return `${prefix}${name}`;
 }
 
 export function buildGlassesText(
@@ -110,87 +113,66 @@ export function buildGlassesText(
   options: DisplayOptions = {},
 ): GlassesDisplay {
   const opts = { ...DEFAULT_OPTS, ...options };
-  const chars = opts.charsPerLine;
   const transForGlasses = state.translationGlasses ?? state.translation;
 
   switch (state.mode) {
     case 'SEARCHING': {
       if (state.isCandidate && (state.translation || state.translationGlasses)) {
-        const cName = state.surahName ? clip(state.surahName, 14) : 'Quran';
-        const cRef = `${cName} ${state.surah}:${state.ayah}`;
-        const cPct = `Match: ${state.candidateScore || 0}%`;
-        const cPad = Math.max(1, chars - cRef.length - cPct.length - 3);
-        const cHdr = `○ ${cRef}${' '.repeat(cPad)}${cPct}`;
-        const cPages = buildPages(transForGlasses, state.transliteration, opts, 1);
-        const lockDots =
-          state._lockingDots !== undefined ? '.'.repeat(state._lockingDots) : '…';
-        cPages[cPages.length - 1] +=
-          `\nAuto locking${lockDots} ${state.candidateScore || 0}%`;
-        return { hdr: cHdr, pages: cPages };
+        const pct = state.candidateScore || 0;
+        return {
+          hdr: `${shortHdr(state, '~ ')}  ${pct}%`,
+          pages: buildPages(transForGlasses, state.transliteration, opts, 1).map(
+            (p, i, arr) =>
+              i === arr.length - 1 ? `${p}\nLocking… ${pct}%` : p,
+          ),
+        };
       }
       if (state.completedSurah) {
         const sName = state.completedSurahName || `Surah ${state.completedSurah}`;
         return {
-          hdr: `✓ ${clip(sName, 24)} complete`,
+          hdr: `✓ ${clip(sName, 20)}`,
           pages: ['Listening for next surah…'],
         };
       }
       if (state.userSearching && (state.translation || state.translationGlasses)) {
-        const uName = state.surahName ? clip(state.surahName, 14) : 'Quran';
-        const uRef = `${uName} ${state.surah}:${state.ayah}`;
-        const uPct = `Match: ${Math.round((state.confidence || 0) * 100)}%`;
-        const uPad = Math.max(1, chars - uRef.length - uPct.length - 3);
-        const uHdr = `● ${uRef}${' '.repeat(uPad)}${uPct}`;
-        const uPages = buildPages(transForGlasses, state.transliteration, opts);
-        uPages[uPages.length - 1] += '\nListening for next verse…';
-        return { hdr: uHdr, pages: uPages };
+        return {
+          hdr: shortHdr(state, '● '),
+          pages: buildPages(transForGlasses, state.transliteration, opts),
+        };
       }
-      return { hdr: 'Listening', pages: ['\nSearching…'] };
+      return { hdr: 'Listening', pages: ['Searching…'] };
     }
 
     case 'LOCKED': {
-      const lName = state.surahName ? clip(state.surahName, 14) : 'Quran';
-      const lRef = `${lName} ${state.surah}:${state.ayah}`;
-      const lPct = `Match: ${Math.round((state.confidence || 0) * 100)}%`;
-      const lPad = Math.max(1, chars - lRef.length - lPct.length - 3);
-      const lHdr = `● ${lRef}${' '.repeat(lPad)}${lPct}`;
+      const pct = Math.round((state.confidence || 0) * 100);
       return {
-        hdr: lHdr,
+        hdr: pct > 0 ? `${shortHdr(state, '')}  ${pct}%` : shortHdr(state, ''),
         pages: buildPages(transForGlasses, state.transliteration, opts),
       };
     }
 
     case 'PAUSED': {
-      const pName = state.surahName ? clip(state.surahName, 14) : 'Quran';
-      const pRef = `${pName} ${state.surah ? `${state.surah}:${state.ayah}` : ''}`;
-      const pHdr = `⏸ PAUSED  ${pRef}`;
-      const transForPaused = state.translationGlasses ?? state.translation;
-      const pBody = transForPaused || 'Tap to resume';
-      const div = '-'.repeat(chars);
-      const pPages = buildPages(pBody, state.transliteration, opts, 2);
-      pPages[pPages.length - 1] += `\n${div}\nPAUSED — tap to resume`;
-      return { hdr: pHdr, pages: pPages };
+      const body = transForGlasses || 'Tap to resume';
+      const pages = buildPages(body, state.transliteration, opts, 1);
+      pages[pages.length - 1] += '\nPAUSED — tap resume';
+      return { hdr: `⏸ ${shortHdr(state, '')}`, pages };
     }
 
     case 'RESUMING': {
       if (state.translation || state.translationGlasses || state.transliteration) {
-        const rName = state.surahName ? clip(state.surahName, 14) : 'Quran';
-        const rRef = `${rName} ${state.surah}:${state.ayah}`;
-        const rHdr = `↻ ${rRef}`;
         return {
-          hdr: rHdr,
+          hdr: shortHdr(state, '↻ '),
           pages: buildPages(transForGlasses, state.transliteration, opts),
         };
       }
-      const rName2 = state.surahName ? clip(state.surahName, 14) : 'Quran';
-      return { hdr: `↻ ${rName2}`, pages: ['Listening…'] };
+      return { hdr: shortHdr(state, '↻ '), pages: ['Listening…'] };
     }
 
     case 'LOST':
-      return { hdr: '⚠ Signal Lost', pages: ['Resume recitation.'] };
+      return { hdr: 'Signal lost', pages: ['Resume reciting.'] };
 
     default:
-      return { hdr: appTitleHdr(opts), pages: ['Ready.\nTap temple to start.'] };
+      return { hdr: opts.appTitle, pages: ['Ready.'] };
   }
 }
 

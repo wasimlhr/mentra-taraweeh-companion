@@ -335,15 +335,21 @@ export class MentraTaraweehSession {
     let hdr = title;
     if (remainingMs && remainingMs > 0) {
       const secs = Math.ceil(remainingMs / 1000);
-      hdr = `${title} ${secs}s`;
+      hdr = `${title} · ${secs}s`;
     }
-    const body = text || ' ';
+    const body = (text || ' ').trim() || ' ';
     try {
-      // Mentra SDK: showReferenceCard(title, text) — positional, not an object
-      this.session.layouts.showReferenceCard(hdr, body);
+      // DoubleTextWall uses top + bottom halves — reads more centered than
+      // ReferenceCard (which Mentra pins small in the upper-left on G1).
+      this.session.layouts.showDoubleTextWall(hdr, body);
       console.log(`[Mentra] Glasses ← ${hdr.slice(0, 48)}`);
     } catch (err) {
       console.error('[Mentra] Glasses display failed:', err);
+      try {
+        this.session.layouts.showTextWall(`${hdr}\n\n${body}`);
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -389,8 +395,8 @@ export class MentraTaraweehSession {
     const mode = this.opts.taraweehMode ? 'Taraweeh' : 'Practice';
     const surah = this.opts.preferredSurah ? `Surah ${this.opts.preferredSurah}` : 'Auto surah';
     try {
-      this.session.layouts.showReferenceCard(
-        'Taraweeh Companion',
+      this.session.layouts.showDoubleTextWall(
+        'Quran Companion',
         `${mode} · ${surah}\nListening…\n\nTap: next / resume\nLong press: pause`,
       );
     } catch (err) {

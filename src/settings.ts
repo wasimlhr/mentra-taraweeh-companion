@@ -41,27 +41,44 @@ export function readTaraweehSettings(session: AppSession): TaraweehSettings {
   const s = session.settings;
   const reciteRaw = String(s.get('recite_mode', DEFAULTS.reciteMode)).toLowerCase().trim();
   const surahRaw = parseInt(String(s.get('preferred_surah', '0')), 10);
-  const bottomRaw = String(s.get('glasses_bottom', DEFAULTS.glassesBottom));
   const keyModeRaw = String(s.get('key_mode', DEFAULTS.keyMode));
-  const providerRaw = String(s.get('transcription_provider', DEFAULTS.transcriptionProvider));
+  const groqApiKey = String(s.get('groq_api_key', '') || '').trim();
+  const openaiApiKey = String(s.get('openai_api_key', '') || '').trim();
 
-  // Mentra select values should be "practice" | "taraweeh"; accept loose labels too.
+  // New simple toggle; fall back to old glasses_bottom select if still present.
+  let glassesBottom: TaraweehSettings['glassesBottom'] = 'transliteration';
+  if (s.has('show_transliteration')) {
+    glassesBottom = asBool(s.get('show_transliteration', true), true)
+      ? 'transliteration'
+      : 'translation-only';
+  } else {
+    const bottomRaw = String(s.get('glasses_bottom', DEFAULTS.glassesBottom));
+    glassesBottom =
+      bottomRaw === 'translation-only' ? 'translation-only' : 'transliteration';
+  }
+
   const reciteMode: TaraweehSettings['reciteMode'] =
     reciteRaw === 'practice' || reciteRaw.includes('practice')
       ? 'practice'
       : 'taraweeh';
 
+  // Prefer OpenAI only when BYOK and an OpenAI key is set (no Groq key).
+  const keyMode = keyModeRaw === 'byok' ? 'byok' : 'shared';
+  let transcriptionProvider: TaraweehSettings['transcriptionProvider'] = 'groq';
+  if (keyMode === 'byok' && openaiApiKey && !groqApiKey) {
+    transcriptionProvider = 'openai';
+  }
+
   return {
     reciteMode,
     preferredSurah: clampSurah(surahRaw),
-    glassesBottom:
-      bottomRaw === 'translation-only' ? 'translation-only' : 'transliteration',
-    fastMode: asBool(s.get('fast_mode', DEFAULTS.fastMode), DEFAULTS.fastMode),
-    slowMode: asBool(s.get('slow_mode', DEFAULTS.slowMode), DEFAULTS.slowMode),
-    keyMode: keyModeRaw === 'byok' ? 'byok' : 'shared',
-    transcriptionProvider: providerRaw === 'openai' ? 'openai' : 'groq',
-    groqApiKey: String(s.get('groq_api_key', '') || '').trim(),
-    openaiApiKey: String(s.get('openai_api_key', '') || '').trim(),
+    glassesBottom,
+    fastMode: asBool(s.get('fast_mode', false), false),
+    slowMode: asBool(s.get('slow_mode', false), false),
+    keyMode,
+    transcriptionProvider,
+    groqApiKey,
+    openaiApiKey,
   };
 }
 
@@ -81,8 +98,11 @@ export function resolveWhisperOpts(settings: TaraweehSettings): WhisperOpts {
     if (transcriptionProvider === 'openai' && openaiApiKey) {
       return { provider: 'openai', apiKey: openaiApiKey };
     }
-    if (transcriptionProvider === 'groq' && groqApiKey) {
+    if (groqApiKey) {
       return { provider: 'groq', apiKey: groqApiKey };
+    }
+    if (openaiApiKey) {
+      return { provider: 'openai', apiKey: openaiApiKey };
     }
     console.warn('[Settings] BYOK mode but key empty — trying shared keys');
   }
@@ -117,6 +137,7 @@ export function watchTaraweehSettings(
   const keys = [
     'recite_mode',
     'preferred_surah',
+    'show_transliteration',
     'glasses_bottom',
     'fast_mode',
     'slow_mode',
