@@ -338,18 +338,14 @@ export class MentraTaraweehSession {
       hdr = `${title} · ${secs}s`;
     }
     const body = (text || ' ').trim() || ' ';
+    // TextWall = full main view. ReferenceCard sat top-left; DoubleTextWall
+    // skewed right on G1. Keep one simple block.
+    const wall = `${hdr}\n${body}`;
     try {
-      // DoubleTextWall uses top + bottom halves — reads more centered than
-      // ReferenceCard (which Mentra pins small in the upper-left on G1).
-      this.session.layouts.showDoubleTextWall(hdr, body);
+      this.session.layouts.showTextWall(wall);
       console.log(`[Mentra] Glasses ← ${hdr.slice(0, 48)}`);
     } catch (err) {
       console.error('[Mentra] Glasses display failed:', err);
-      try {
-        this.session.layouts.showTextWall(`${hdr}\n\n${body}`);
-      } catch {
-        /* ignore */
-      }
     }
   }
 
@@ -395,9 +391,8 @@ export class MentraTaraweehSession {
     const mode = this.opts.taraweehMode ? 'Taraweeh' : 'Practice';
     const surah = this.opts.preferredSurah ? `Surah ${this.opts.preferredSurah}` : 'Auto surah';
     try {
-      this.session.layouts.showDoubleTextWall(
-        'Quran Companion',
-        `${mode} · ${surah}\nListening…\n\nTap: next / resume\nLong press: pause`,
+      this.session.layouts.showTextWall(
+        `Quran Companion\n${mode} · ${surah}\nListening…\n\nTap: next / resume\nLong press: pause`,
       );
     } catch (err) {
       console.error('[Mentra] Welcome display failed:', err);
