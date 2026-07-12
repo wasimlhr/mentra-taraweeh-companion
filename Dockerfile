@@ -2,12 +2,11 @@ FROM oven/bun:1.3
 
 WORKDIR /app
 
-# Root deps (Mentra SDK)
+# Install root + backend deps before copying full source.
+# Ignore postinstall — it needs backend/ which isn't fully present yet.
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
-
-# Backend deps (Quran pipeline)
 COPY backend/package.json backend/package-lock.json ./backend/
+RUN bun install --frozen-lockfile --ignore-scripts
 RUN cd backend && npm ci --omit=dev
 
 COPY . .
