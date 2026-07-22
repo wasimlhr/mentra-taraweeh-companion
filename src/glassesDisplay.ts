@@ -17,6 +17,9 @@ export type VerseDisplayState = {
   confidence?: number;
   /** Explicit 0–100 match percent from pipeline */
   matchPct?: number;
+  syncing?: boolean;
+  whisperSurah?: number;
+  whisperAyah?: number;
   isCandidate?: boolean;
   candidateScore?: number;
   completedSurah?: number;
@@ -166,8 +169,14 @@ export function buildGlassesText(
 
     case 'LOCKED': {
       const pct = toMatchPercent(state.confidence, state.candidateScore, state.matchPct);
+      const syncFrom = state.whisperSurah && state.whisperAyah
+        ? `${state.whisperSurah}:${state.whisperAyah}`
+        : '?';
+      const syncTo = state.surah && state.ayah ? `${state.surah}:${state.ayah}` : '?';
       return {
-        hdr: pct > 0 ? `${shortHdr(state, '')}  ${pct}%` : shortHdr(state, ''),
+        hdr: state.syncing
+          ? `Syncing ${syncFrom} > ${syncTo}`
+          : pct > 0 ? `${shortHdr(state, '')}  ${pct}%` : shortHdr(state, ''),
         pages: buildPages(transForGlasses, state.transliteration, opts),
       };
     }

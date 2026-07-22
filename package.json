@@ -1,6 +1,6 @@
 {
   "name": "mentra-taraweeh-companion",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Taraweeh Companion — MentraOS app for G1/G2 smart glasses",
   "type": "module",
   "scripts": {

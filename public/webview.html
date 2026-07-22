@@ -808,7 +808,7 @@ body {
   <div class="header">
     <h1>☽ Quran Companion</h1>
     <div class="header-right">
-      <span class="version" id="versionEl">v2.6.5</span>
+      <span class="version" id="versionEl">v2.6.7</span>
       <button id="helpBtn" onclick="showHelp()" title="How it works">?</button>
       <button id="themeBtn" onclick="toggleTheme()" title="Toggle dark/light mode">◑</button>
       <button id="settingsBtn" onclick="showSettings()">⚙</button>
@@ -1126,7 +1126,7 @@ body {
 
 <script>
 (function () {
-  const APP_VERSION = 'v2.6.5-mentra';
+  const APP_VERSION = 'v2.6.7-mentra';
 
   // ─── MentraOS phone webview mode ───────────────────────────────────────────
   // Reuses Even Hub UI; Mentra handles mic + glasses. This page only polls live state.
@@ -2566,10 +2566,13 @@ function mentraConnectLive() {
       document.getElementById('confPct').textContent = conf + '%';
       confRow.style.display = (state.mode === 'LOCKED' || isCandidate || isUserSearching) ? 'flex' : 'none';
 
-      var statusLabel = (isCandidate || state.userSearching)
-        ? 'Auto locking… ' + (state.surahName || '') + ' \u2022 ' + (state.ayah || '') + (isCandidate ? ' (' + (state.candidateScore || '') + '%)' : '')
-        : (state.surahName || '') + ' \u2022 ' + (state.ayah || '');
-      setStatus(statusLabel, (isCandidate || state.userSearching) ? '' : 'result');
+      var statusLabel = state.syncing
+        ? 'Syncing recitation… Heard ' + (state.whisperSurah || '?') + ':' + (state.whisperAyah || '?')
+          + ' \u2022 Shown ' + (state.surah || '?') + ':' + (state.ayah || '?')
+        : (isCandidate || state.userSearching)
+          ? 'Auto locking… ' + (state.surahName || '') + ' \u2022 ' + (state.ayah || '') + (isCandidate ? ' (' + (state.candidateScore || '') + '%)' : '')
+          : (state.surahName || '') + ' \u2022 ' + (state.ayah || '');
+      setStatus(statusLabel, (state.syncing || isCandidate || state.userSearching) ? '' : 'result');
     } else {
       locked.style.display = 'none';
       var navRow = document.getElementById('verseNavRow');
@@ -2804,7 +2807,9 @@ function mentraConnectLive() {
                 return c <= 1 ? Math.round(c * 100) : Math.round(c);
               })());
       var _confMode = msg.state.mode;
-      if (_confMode === 'LOCKED') {
+      if (_confMode === 'LOCKED' && msg.state.syncing) {
+        setPill('sPillConf', 'warn', 'Match: syncing');
+      } else if (_confMode === 'LOCKED') {
         setPill('sPillConf', _conf >= 70 ? 'ok' : 'warn', 'Match: ' + _conf + '%');
       } else if (_confMode === 'SEARCHING' && msg.state.isCandidate) {
         setPill('sPillConf', 'warn', 'Match: ~' + _conf + '%');

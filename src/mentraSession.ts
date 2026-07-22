@@ -116,8 +116,9 @@ export class MentraTaraweehSession {
       };
     }
     const name = s.surahName || 'Quran';
-    const ref =
-      s.surah && s.ayah ? `${name} ${s.surah}:${s.ayah}` : name;
+    const ref = s.syncing
+      ? `Syncing recitation: heard ${s.whisperSurah || '?'}:${s.whisperAyah || '?'} | shown ${s.surah || '?'}:${s.ayah || '?'}`
+      : s.surah && s.ayah ? `${name} ${s.surah}:${s.ayah}` : name;
     // Plain JSON only — Mentra phone UI polls this every second.
     let safeState: Record<string, unknown> = { mode: s.mode || 'SEARCHING' };
     try {
@@ -275,6 +276,7 @@ export class MentraTaraweehSession {
       preferredSurah,
       translationLang: this.opts.translationLang ?? '',
       whisperOpts,
+      audioSource: 'g2',
       geminiKey: process.env.GEMINI_API_KEY,
       onStateUpdate: (msg: PipelineMsg) => this.handlePipelineMessage(msg),
       onStatus: (s) => {
@@ -377,6 +379,7 @@ export class MentraTaraweehSession {
       prev.surah !== state.surah ||
       prev.ayah !== state.ayah ||
       prev.mode !== state.mode ||
+      prev.syncing !== state.syncing ||
       (prev.mode === 'LOCKED' && state.mode !== 'LOCKED');
 
     if (verseChanged) {
@@ -384,10 +387,12 @@ export class MentraTaraweehSession {
       this.display = buildGlassesText(state, {
         glassesBottom: this.opts.glassesBottom,
       });
-      void this.pushDisplay();
+      void this.pushDisplay(msg.state.timerMs);
 
       const timerMs = msg.state.timerMs;
-      if (timerMs && timerMs > 0 && this.display.pages.length > 1) {
+      if (state.syncing) {
+        this.stopPageFlip();
+      } else if (timerMs && timerMs > 0 && this.display.pages.length > 1) {
         this.startPageFlip(timerMs);
       } else {
         this.stopPageFlip();
