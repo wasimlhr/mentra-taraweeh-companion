@@ -28,6 +28,25 @@ const WEBVIEW_FILE = path.join(PUBLIC_DIR, 'webview.html');
 
 /** Controllers keyed by Mentra userId for webview live state */
 const sessionsByUser = new Map<string, MentraTaraweehSession>();
+const languageByUser = new Map<string, string>();
+const TRANSLATION_LANGS = new Set([
+  '',
+  'en',
+  'ur',
+  'fr',
+  'es',
+  'id',
+  'tr',
+  'bn',
+  'zh',
+  'ru',
+  'sv',
+]);
+
+function sanitizeTranslationLang(value: unknown): string {
+  const normalized = String(value || '').trim().toLowerCase();
+  return TRANSLATION_LANGS.has(normalized) ? normalized : '';
+}
 
 class TaraweehMentraApp extends AppServer {
   constructor() {
@@ -140,6 +159,24 @@ class TaraweehMentraApp extends AppServer {
       res.json({ ok: !!controller });
     });
 
+
+    expressApp.post('/api/language', (req: AuthenticatedRequest, res: any) => {
+      const userId = req.authUserId;
+      if (!userId) {
+        return res.status(401).json({ ok: false, message: 'Mentra user required' });
+      }
+      const requestBody = (req as AuthenticatedRequest & { body?: { lang?: unknown } }).body;
+      const requested = String(requestBody?.lang ?? '').trim().toLowerCase();
+      const translationLang = sanitizeTranslationLang(requested);
+      if (requested && !translationLang) {
+        return res.status(400).json({ ok: false, message: 'Unsupported translation language' });
+      }
+      languageByUser.set(userId, translationLang);
+      const controller = sessionsByUser.get(userId);
+      controller?.setTranslationLanguage(translationLang);
+      return res.json({ ok: true, active: !!controller, translationLang });
+    });
+
     expressApp.post('/api/toggle-pause', (req: AuthenticatedRequest, res) => {
       const userId = req.authUserId;
       const controller = userId ? sessionsByUser.get(userId) : undefined;
@@ -183,16 +220,19 @@ class TaraweehMentraApp extends AppServer {
     const previous = sessionsByUser.get(userId);
     if (previous) previous.destroy();
 
-    const controller = new MentraTaraweehSession(
-      session,
-      settingsToSessionOptions(initial),
-    );
+    const controller = new MentraTaraweehSession(session, {
+      ...settingsToSessionOptions(initial),
+      translationLang: languageByUser.get(userId) ?? '',
+    });
 
     sessionsByUser.set(userId, controller);
     controller.start();
 
     const unwatch = watchTaraweehSettings(session, (updated) => {
-      controller.applySettings(settingsToSessionOptions(updated));
+      controller.applySettings({
+        ...settingsToSessionOptions(updated),
+        translationLang: languageByUser.get(userId) ?? '',
+      });
     });
 
     session.events.onDisconnected(() => {

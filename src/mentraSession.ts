@@ -105,6 +105,7 @@ export class MentraTaraweehSession {
       return {
         active: true,
         reciteMode,
+        translationLang: this.opts.translationLang ?? '',
         mode: 'SEARCHING',
         ref: 'Listening…',
         arabic: '',
@@ -139,15 +140,30 @@ export class MentraTaraweehSession {
     return {
       active: true,
       reciteMode,
+      translationLang: this.opts.translationLang ?? '',
       mode: s.mode || 'SEARCHING',
       ref,
       arabic: s.arabic || '',
       transliteration: s.transliteration || '',
-      translation: s.translationGlasses || s.translation || '',
+      translation: s.translation || '',
+      translationGlasses: s.translationGlasses || s.translation || '',
       confidence: typeof s.confidence === 'number' ? s.confidence : null,
       alert,
       state: safeState,
     };
+  }
+
+  setTranslationLanguage(lang: string) {
+    const next = String(lang || '').trim().toLowerCase();
+    if ((this.opts.translationLang ?? '') === next) return;
+
+    this.opts.translationLang = next;
+    if (this.pipeline) {
+      this.pipeline.translationLang = next;
+      this.pipeline._emitState?.(null, null);
+    }
+
+    console.log(`[Mentra] Translation -> ${next || 'English'}`);
   }
 
   private setAlert(

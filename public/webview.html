@@ -997,16 +997,16 @@ body {
       <span class="s-label">Translation</span>
       <select id="settingLang" onchange="updateTranslationDesc()">
         <optgroup label="Languages">
-          <option value="">English (built-in)</option>
-          <option value="bn">Bengali</option>
-          <option value="zh">Chinese</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="id">Indonesian</option>
-          <option value="ru">Russian</option>
-          <option value="sv">Swedish</option>
-          <option value="tr">Turkish</option>
-          <option value="ur">Urdu</option>
+          <option value="" title="Shown in English on both phone and glasses.">English (built-in)</option>
+          <option value="bn" title="Bengali on phone; English fallback on glasses because Bengali glyphs are unavailable.">Bengali</option>
+          <option value="zh" title="Shown in Chinese on both phone and glasses.">Chinese</option>
+          <option value="es" title="Shown in Spanish on both phone and glasses.">Spanish</option>
+          <option value="fr" title="Shown in French on both phone and glasses.">French</option>
+          <option value="id" title="Shown in Indonesian on both phone and glasses.">Indonesian</option>
+          <option value="ru" title="Shown in Russian on both phone and glasses.">Russian</option>
+          <option value="sv" title="Shown in Swedish on both phone and glasses.">Swedish</option>
+          <option value="tr" title="Shown in Turkish on both phone and glasses.">Turkish</option>
+          <option value="ur" title="Urdu on phone; English fallback on glasses because Urdu glyph shaping is unavailable.">Urdu</option>
         </optgroup>
       </select>
       <span class="s-hint" id="translationDesc" style="font-size:11px;display:block;margin-top:4px;font-style:normal;min-height:1.4em"></span>
@@ -1134,6 +1134,8 @@ body {
   var _mentraPollTimer = null;
   var _mentraLastRef = '';
   var _mentraFailCount = 0;
+  var _mentraLanguageSynced = null;
+  var _mentraLanguageSyncing = null;
 
   function mentraDecodeJwtPayload(jwt) {
     try {
@@ -1187,6 +1189,32 @@ body {
     if (t.front) q.push('aos_frontend_token=' + encodeURIComponent(t.front));
     if (t.temp) q.push('aos_temp_token=' + encodeURIComponent(t.temp));
     return origin + path + (q.length ? ('?' + q.join('&')) : '');
+  }
+
+  function syncMentraTranslationLanguage(lang) {
+    if (!MENTRA_MODE) return Promise.resolve(false);
+    var clean = sanitizeTranslationLang(lang);
+    if (_mentraLanguageSynced === clean || _mentraLanguageSyncing === clean) {
+      return Promise.resolve(true);
+    }
+    _mentraLanguageSyncing = clean;
+    var headers = mentraAuthHeaders();
+    headers['Content-Type'] = 'application/json';
+    return fetch(mentraApiUrl('/api/language'), {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: JSON.stringify({ lang: clean })
+    }).then(function (response) {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      _mentraLanguageSynced = clean;
+      return true;
+    }).catch(function (err) {
+      if (typeof log === 'function') log('Translation sync: ' + (err.message || err), 'err');
+      return false;
+    }).finally(function () {
+      _mentraLanguageSyncing = null;
+    });
   }
 
   
@@ -1246,6 +1274,12 @@ function mentraConnectLive() {
             return;
           }
           setWsPill('ok', 'Mentra: live');
+          var wantedLang = sanitizeTranslationLang(S.settings.lang || '');
+          if (sanitizeTranslationLang(data.translationLang || '') === wantedLang) {
+            _mentraLanguageSynced = wantedLang;
+          } else {
+            syncMentraTranslationLanguage(wantedLang);
+          }
           if (data.reciteMode === 'practice' || data.reciteMode === 'taraweeh') {
             if (data.reciteMode !== _reciteMode) {
               _reciteMode = data.reciteMode;
@@ -3713,6 +3747,7 @@ function mentraConnectLive() {
     var clean = sanitizeTranslationLang(v);
     S.settings.lang = clean;
     saveSettings();
+    if (MENTRA_MODE) syncMentraTranslationLanguage(clean);
     updateTranslationDesc && updateTranslationDesc();
     // Re-init so the pipeline fetches the right translation bundle
     if (S.ws && S.ws.readyState === WebSocket.OPEN) reinitPipeline();
@@ -3874,6 +3909,7 @@ function mentraConnectLive() {
       ? true
       : document.getElementById('btnPhoneMic').classList.contains('active');
     saveSettings();
+    if (MENTRA_MODE) syncMentraTranslationLanguage(S.settings.lang);
     reinitPipeline();
     document.getElementById('settingsView').style.display = 'none';
     document.getElementById('mainView').style.display = 'block';
