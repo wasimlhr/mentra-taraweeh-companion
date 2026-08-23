@@ -4,294 +4,336 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Taraweeh Companion</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet" />
 <style>
-/* Design tokens lifted from the G2 build so both apps read as one product. */
+/* Design tokens from the G2 build so both apps read as one product. */
 :root {
-  --tc-highlight:#232323; --tc-1:#232323; --tc-2:#7B7B7B; --tc-3:#9a9a9a;
+  --tc-1:#232323; --tc-2:#7B7B7B; --tc-3:#9a9a9a;
   --tc-red:#e53935; --tc-green:#2ea44f; --tc-gold:#b7860b;
-  --bc-1:#FFFFFF; --bc-2:#EEEEEE; --bc-3:#e2e2e2; --bc-4:#d4d4d4;
-  --bc-accent:#FEF991; --bc-accent-press:#f4ef85;
+  --bc-1:#FFFFFF; --bc-2:#F4F4F5; --bc-3:#e2e2e2; --bc-4:#d9d9dd;
+  --bc-accent:#FEF991;
   --font:"FK Grotesk Neue","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --track-tight:-0.02em; --r:8px;
+  --font-ar:"Amiri","Traditional Arabic",serif;
+  --r:12px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --tc-highlight:#FFFFFF; --tc-1:#FFFFFF; --tc-2:#8A8A8A; --tc-3:#666;
+    --tc-1:#FFFFFF; --tc-2:#8A8A8A; --tc-3:#6a6a6a;
     --tc-red:#f87171; --tc-green:#4ade80;
-    --bc-1:#111111; --bc-2:#1A1A1A; --bc-3:#2a2a2a; --bc-4:#3a3a3a;
+    --bc-1:#0E0E10; --bc-2:#18181B; --bc-3:#27272A; --bc-4:#34343A;
     color-scheme: dark;
   }
 }
-* { box-sizing: border-box; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body {
-  margin: 0; background: var(--bc-1); color: var(--tc-1);
-  font: 15px/1.5 var(--font); letter-spacing: var(--track-tight);
-  padding: max(16px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  margin:0; background:var(--bc-1); color:var(--tc-1);
+  font:15px/1.5 var(--font); letter-spacing:-0.01em;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
 }
-h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
-.sub { font-size: 12px; color: var(--tc-2); margin-bottom: 18px; }
-.s-section {
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--tc-2); margin: 18px 0 6px;
+
+.top { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; }
+.top h1 { font-size:19px; font-weight:600; margin:0; }
+.top .v { font-size:11px; color:var(--tc-3); margin-left:auto; }
+
+.pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.pill {
+  display:flex; align-items:center; gap:6px; font-size:11px; color:var(--tc-2);
+  background:var(--bc-2); border:1px solid var(--bc-3); border-radius:999px; padding:5px 10px;
 }
-.s-card { background: var(--bc-1); border: 1px solid var(--bc-4); border-radius: var(--r); }
-.s-row { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; }
-.s-row + .s-row { border-top: 1px solid var(--bc-3); }
-.s-label { font-size: 13px; color: var(--tc-highlight); }
-.s-hint { font-size: 11px; color: var(--tc-2); }
-.s-hint a { color: var(--tc-gold); }
-.toggle-group { display: flex; gap: 6px; flex-wrap: wrap; }
-.toggle-btn {
-  flex: 1 1 auto; font: inherit; font-size: 13px; padding: 9px 12px;
-  color: var(--tc-1); background: var(--bc-2);
-  border: 1px solid var(--bc-4); border-radius: var(--r); cursor: pointer;
+.dot { width:7px; height:7px; border-radius:50%; background:var(--tc-3); flex:none; }
+.dot.ok{background:var(--tc-green)} .dot.err{background:var(--tc-red)} .dot.warn{background:var(--tc-gold)}
+
+.verse {
+  background:var(--bc-2); border:1px solid var(--bc-3); border-radius:var(--r);
+  padding:16px; margin-bottom:12px; position:relative; overflow:hidden;
 }
-.toggle-btn.active { background: var(--bc-accent); border-color: var(--bc-accent); color: #232323; font-weight: 500; }
+.verse .ref { display:flex; align-items:baseline; gap:8px; font-size:12px; color:var(--tc-2); margin-bottom:12px; }
+.verse .ref b { font-size:14px; color:var(--tc-1); font-weight:600; }
+.verse .conf { margin-left:auto; color:var(--tc-green); font-variant-numeric:tabular-nums; }
+.ar { font-family:var(--font-ar); direction:rtl; text-align:right; font-size:25px; line-height:2; margin-bottom:14px; }
+.tl { font-size:13px; color:var(--tc-2); font-style:italic; margin-bottom:10px; }
+.tr { font-size:15px; line-height:1.55; }
+.bar { position:absolute; left:0; bottom:0; height:2px; background:var(--bc-accent); width:0; }
+.empty { text-align:center; color:var(--tc-3); padding:26px 10px; font-size:14px; }
+
+.search { background:var(--bc-2); border:1px solid var(--bc-3); border-radius:var(--r); padding:14px; margin-bottom:12px; }
+.search .hd { display:flex; font-size:11px; color:var(--tc-2); margin-bottom:8px; }
+.search .hd .w { margin-left:auto; color:var(--tc-gold); }
+.heard { font-family:var(--font-ar); direction:rtl; text-align:right; font-size:16px; color:var(--tc-2); min-height:1.6em; margin-bottom:10px; }
+.cand { display:flex; align-items:center; gap:8px; font-size:12px; padding:5px 0; border-top:1px solid var(--bc-3); }
+.cand .r { color:var(--tc-1); font-weight:500; min-width:64px; }
+.cand .a { font-family:var(--font-ar); direction:rtl; color:var(--tc-2); flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.cand .s { margin-left:auto; color:var(--tc-2); font-variant-numeric:tabular-nums; }
+.cand.top .r, .cand.top .s { color:var(--tc-green); }
+.wins { display:flex; gap:4px; margin-top:8px; }
+.win { height:3px; flex:1; background:var(--bc-4); border-radius:2px; }
+.win.on { background:var(--tc-green); }
+
+.go {
+  width:100%; font:inherit; font-size:16px; font-weight:600; padding:15px;
+  border-radius:var(--r); border:none; background:var(--bc-accent); color:#232323;
+  cursor:pointer; margin-bottom:12px;
+}
+.go.on { background:var(--tc-red); color:#fff; }
+.sec { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--tc-2); margin:16px 0 6px; }
+.card { background:var(--bc-2); border:1px solid var(--bc-3); border-radius:var(--r); }
+.row { display:flex; flex-direction:column; gap:6px; padding:12px 14px; }
+.row + .row { border-top:1px solid var(--bc-3); }
+.row .lbl { font-size:13px; }
+.grp { display:flex; gap:6px; }
+.btn {
+  flex:1; font:inherit; font-size:13px; padding:9px 8px; color:var(--tc-1);
+  background:var(--bc-1); border:1px solid var(--bc-4); border-radius:9px; cursor:pointer;
+}
+.btn.on { background:var(--bc-accent); border-color:var(--bc-accent); color:#232323; font-weight:600; }
+.hint { font-size:11px; color:var(--tc-2); }
+.hint a { color:var(--tc-gold); }
 input, select {
-  font: inherit; font-size: 14px; width: 100%; padding: 10px;
-  background: var(--bc-2); color: var(--tc-1);
-  border: 1px solid var(--bc-4); border-radius: var(--r);
+  font:inherit; font-size:14px; width:100%; padding:11px;
+  background:var(--bc-1); color:var(--tc-1); border:1px solid var(--bc-4); border-radius:9px;
 }
-.btn-primary {
-  width: 100%; font: inherit; font-size: 15px; font-weight: 500; padding: 14px;
-  border-radius: var(--r); border: 1px solid var(--bc-4);
-  background: var(--bc-accent); color: #232323; cursor: pointer; margin-top: 10px;
+details > summary {
+  font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--tc-2);
+  margin:16px 0 6px; cursor:pointer; list-style:none; padding:4px 0;
 }
-.btn-primary.recording { background: var(--tc-red); border-color: var(--tc-red); color: #fff; }
-.btn-sm {
-  font: inherit; font-size: 13px; padding: 8px 12px; border-radius: var(--r);
-  border: 1px solid var(--bc-4); background: var(--bc-2); color: var(--tc-1); cursor: pointer;
-}
-.pill { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tc-2); }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tc-3); flex: none; }
-.dot.ok { background: var(--tc-green); }
-.dot.err { background: var(--tc-red); }
-#verse { font-size: 14px; color: var(--tc-1); margin-top: 8px; min-height: 1.4em; }
-.foot { text-align: center; font-size: 11px; color: var(--tc-3); margin-top: 22px; }
+details > summary::-webkit-details-marker { display:none; }
+details > summary::before { content:'\25B8  '; }
+details[open] > summary::before { content:'\25BE  '; }
+.foot { text-align:center; font-size:11px; color:var(--tc-3); margin-top:20px; }
 </style>
 </head>
-<body style="background:#111;color:#fff;min-height:100vh">
-<noscript style="color:#fff">JavaScript is disabled.</noscript>
+<body>
 
-<h1>Quran Companion</h1>
-<div class="sub" id="ver">Taraweeh Companion</div>
+<div class="top"><h1>Quran Companion</h1><span class="v" id="ver"></span></div>
 
-<div class="s-card">
-  <div class="s-row">
-    <div class="pill"><span class="dot" id="dot"></span><span id="statusText">Starting…</span></div>
-    <div id="verse"></div>
-    <button class="btn-primary" id="toggle">Start Listening</button>
+<div class="pills">
+  <span class="pill"><span class="dot" id="dSvc"></span><span id="tSvc">Connecting</span></span>
+  <span class="pill"><span class="dot" id="dEng"></span><span id="tEng">Engine</span></span>
+  <span class="pill"><span class="dot" id="dMatch"></span><span id="tMatch">Idle</span></span>
+</div>
+
+<div class="verse" id="verseCard">
+  <div class="empty" id="verseEmpty">Tap start, then recite.</div>
+  <div id="verseBody" style="display:none">
+    <div class="ref"><b id="vName">&mdash;</b><span id="vRef"></span><span class="conf" id="vConf"></span></div>
+    <div class="ar" id="vAr"></div>
+    <div class="tl" id="vTl"></div>
+    <div class="tr" id="vTr"></div>
+  </div>
+  <div class="bar" id="vBar"></div>
+</div>
+
+<div class="search" id="searchCard" style="display:none">
+  <div class="hd"><span id="sAudio">0.0s</span><span class="w" id="sWins">Searching</span></div>
+  <div class="heard" id="sHeard"></div>
+  <div id="sCands"></div>
+  <div class="wins" id="sWinBar"></div>
+</div>
+
+<button class="go" id="go">Start Listening</button>
+
+<div class="sec">Controls</div>
+<div class="card">
+  <div class="row">
+    <span class="lbl">Pace</span>
+    <div class="grp" id="paces">
+      <button class="btn" data-pace="slow">Slow</button>
+      <button class="btn" data-pace="follow">Follow</button>
+      <button class="btn" data-pace="fast">Fast</button>
+    </div>
+    <span class="hint" id="paceHint"></span>
+  </div>
+  <div class="row">
+    <span class="lbl">Ayah</span>
+    <div class="grp">
+      <button class="btn" data-act="manual_prev">&larr; Prev</button>
+      <button class="btn" data-nudge="0.85">Slower</button>
+      <button class="btn" data-nudge="1.18">Faster</button>
+      <button class="btn" data-act="manual_advance">Next &rarr;</button>
+    </div>
+  </div>
+  <div class="row">
+    <span class="lbl">Mode</span>
+    <div class="grp" id="modes">
+      <button class="btn" data-m="taraweeh">Taraweeh</button>
+      <button class="btn" data-m="practice">Practice</button>
+    </div>
+    <span class="hint" id="modeHint"></span>
   </div>
 </div>
 
-<div class="s-section">Transcription engine</div>
-<div class="s-card">
-  <div class="s-row">
-    <div class="toggle-group" id="providers">
-      <button type="button" class="toggle-btn" data-p="groq">Groq</button>
-      <button type="button" class="toggle-btn" data-p="openai">OpenAI</button>
+<details>
+  <summary>Settings</summary>
+  <div class="card">
+    <div class="row">
+      <span class="lbl">Transcription engine</span>
+      <div class="grp" id="provs">
+        <button class="btn" data-p="groq">Groq</button>
+        <button class="btn" data-p="openai">OpenAI</button>
+      </div>
+      <span class="hint" id="engHint"></span>
+      <input id="key" type="password" placeholder="API key" autocomplete="off" spellcheck="false" />
+      <div class="grp">
+        <button class="btn" id="save">Save key</button>
+        <a class="btn" id="getKey" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;line-height:1.9">Get a key</a>
+      </div>
+      <span class="hint" id="saveHint"></span>
     </div>
-    <span class="s-hint" id="engineHint" style="margin-top:6px"></span>
-    <input id="key" type="password" placeholder="API key" autocomplete="off" spellcheck="false" style="margin-top:8px" />
-    <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
-      <button class="btn-sm" id="save">Save</button>
-      <span class="s-hint" id="saveHint"></span>
-      <a class="s-hint" id="getKey" href="#" target="_blank" rel="noopener" style="margin-left:auto">Get a key →</a>
+    <div class="row">
+      <span class="lbl">Translation</span>
+      <select id="lang">
+        <option value="">English (built-in)</option>
+        <option value="bn">Bengali</option><option value="zh">Chinese</option>
+        <option value="es">Spanish</option><option value="fr">French</option>
+        <option value="id">Indonesian</option><option value="ru">Russian</option>
+        <option value="sv">Swedish</option><option value="tr">Turkish</option>
+        <option value="ur">Urdu</option>
+      </select>
     </div>
-    <span class="s-hint" style="margin-top:8px;color:var(--tc-3)">
-      Stored on this device, sent only to the recognition backend.
-    </span>
-  </div>
-</div>
-
-<div class="s-section">Reading</div>
-<div class="s-card">
-  <div class="s-row">
-    <span class="s-label">Mode</span>
-    <div class="toggle-group" id="modes">
-      <button type="button" class="toggle-btn" data-m="taraweeh">Taraweeh</button>
-      <button type="button" class="toggle-btn" data-m="practice">Practice</button>
+    <div class="row">
+      <span class="lbl">Reset</span>
+      <div class="grp">
+        <button class="btn" data-act="reset">Search again</button>
+        <button class="btn" data-act="reset_rakat">Reset rakat</button>
+      </div>
     </div>
-    <span class="s-hint" id="modeHint" style="margin-top:6px"></span>
-  </div>
-  <div class="s-row">
-    <span class="s-label">Translation</span>
-    <select id="lang">
-      <option value="">English (built-in)</option>
-      <option value="bn">Bengali</option>
-      <option value="zh">Chinese</option>
-      <option value="es">Spanish</option>
-      <option value="fr">French</option>
-      <option value="id">Indonesian</option>
-      <option value="ru">Russian</option>
-      <option value="sv">Swedish</option>
-      <option value="tr">Turkish</option>
-      <option value="ur">Urdu</option>
-    </select>
-  </div>
-</div>
-
-<div class="s-section">Controls</div>
-<div class="s-card">
-  <div class="s-row">
-    <span class="s-label">Pace</span>
-    <div class="toggle-group" id="paces">
-      <button type="button" class="toggle-btn" data-pace="slow">Slow</button>
-      <button type="button" class="toggle-btn" data-pace="follow">Follow</button>
-      <button type="button" class="toggle-btn" data-pace="fast">Fast</button>
-    </div>
-    <span class="s-hint" id="paceHint" style="margin-top:6px"></span>
-  </div>
-  <div class="s-row">
-    <span class="s-label">Nudge the timer</span>
-    <div class="toggle-group">
-      <button type="button" class="btn-sm" data-nudge="0.85" style="flex:1">Slower</button>
-      <button type="button" class="btn-sm" data-nudge="1.18" style="flex:1">Faster</button>
-    </div>
-    <span class="s-hint" style="margin-top:6px">One-off adjustment when the display drifts from the reciter.</span>
-  </div>
-  <div class="s-row">
-    <span class="s-label">Ayah</span>
-    <div class="toggle-group">
-      <button type="button" class="btn-sm" data-act="manual_prev" style="flex:1">&larr; Previous</button>
-      <button type="button" class="btn-sm" data-act="manual_advance" style="flex:1">Next &rarr;</button>
+    <div class="row">
+      <span class="lbl">Glasses gestures</span>
+      <span class="hint">Single tap &mdash; start / stop &middot; Swipe up / down &mdash; prev / next ayah &middot; Long press &mdash; stop</span>
     </div>
   </div>
-  <div class="s-row">
-    <span class="s-label">Reset</span>
-    <div class="toggle-group">
-      <button type="button" class="btn-sm" data-act="reset" style="flex:1">Search again</button>
-      <button type="button" class="btn-sm" data-act="reset_rakat" style="flex:1">Reset rakat</button>
-    </div>
-    <span class="s-hint" style="margin-top:6px">Search again drops the lock and hunts for the verse from scratch.</span>
-  </div>
-</div>
-
-<div class="s-section">Glasses</div>
-<div class="s-card">
-  <div class="s-row">
-    <ul style="margin:0;padding-left:18px;font-size:13px;color:var(--tc-2);line-height:1.7">
-      <li><strong style="color:var(--tc-1)">Single tap</strong> — start / stop</li>
-      <li><strong style="color:var(--tc-1)">Swipe up / down</strong> — previous / next ayah</li>
-      <li><strong style="color:var(--tc-1)">Long press</strong> — stop</li>
-    </ul>
-  </div>
-</div>
+</details>
 
 <div class="foot">Built for the Ummah</div>
 
 <script>
 window.onerror = function (msg, src, line) {
   try { console.log('[Taraweeh UI] error: ' + msg + ' @' + line); } catch (e) {}
-  var b = document.body;
-  if (b) b.insertAdjacentHTML('afterbegin',
-    '<div style="background:#c00;color:#fff;padding:10px;font:13px sans-serif">UI error: ' + msg + '</div>');
 };
 (function () {
-  console.log('[Taraweeh UI] script running, mentra=' + (typeof window.mentra));
-  // (geometry probe removed — layout confirmed correct on device)
   var m = window.mentra;
   var el = function (id) { return document.getElementById(id); };
-  var provider = 'groq';
-  var mode = 'taraweeh';
-  var pace = 'follow';
+  var provider = 'groq', mode = 'taraweeh', pace = 'follow';
+  var timerStart = 0, timerMs = 0, raf = null;
 
   var ENGINE = {
-    groq:   { note: 'Fastest (~350ms) with word timings.', link: 'https://console.groq.com/keys', ph: 'gsk_… (Groq API key)' },
-    openai: { note: 'Reliable and widely available (~450ms).', link: 'https://platform.openai.com/api-keys', ph: 'sk-… (OpenAI API key)' }
+    groq:   { note:'Fastest (~350ms), word timings.', link:'https://console.groq.com/keys', ph:'gsk_… Groq key' },
+    openai: { note:'Reliable and widely available (~450ms).', link:'https://platform.openai.com/api-keys', ph:'sk-… OpenAI key' }
   };
-  var PACE_NOTE = {
-    slow: 'Longer on each ayah — for a measured reciter.',
-    follow: 'Timer follows the reciter automatically.',
-    fast: 'Shorter on each ayah — for a quick reciter.'
-  };
-  var MODE_NOTE = {
-    taraweeh: 'Follows the imam and auto-advances.',
-    practice: 'Locks the ayah you recite and stays there.'
-  };
+  var PACE  = { slow:'Longer on each ayah.', follow:'Follows the reciter.', fast:'Shorter on each ayah.' };
+  var MODES = { taraweeh:'Follows the imam and auto-advances.', practice:'Locks what you recite and stays.' };
 
+  function mark(sel, attr, val) {
+    [].forEach.call(document.querySelectorAll(sel), function (b) {
+      b.classList.toggle('on', b.dataset[attr] === val);
+    });
+  }
   function paint() {
-    [].forEach.call(document.querySelectorAll('#providers .toggle-btn'), function (b) {
-      b.classList.toggle('active', b.dataset.p === provider);
-    });
-    [].forEach.call(document.querySelectorAll('#modes .toggle-btn'), function (b) {
-      b.classList.toggle('active', b.dataset.m === mode);
-    });
-    el('engineHint').textContent = ENGINE[provider].note;
+    mark('#provs .btn','p',provider); mark('#modes .btn','m',mode); mark('#paces .btn','pace',pace);
+    el('engHint').textContent = ENGINE[provider].note;
     el('getKey').href = ENGINE[provider].link;
     el('key').placeholder = ENGINE[provider].ph;
-    el('modeHint').textContent = MODE_NOTE[mode];
-    [].forEach.call(document.querySelectorAll('#paces .toggle-btn'), function (b) {
-      b.classList.toggle('active', b.dataset.pace === pace);
-    });
-    el('paceHint').textContent = PACE_NOTE[pace];
+    el('paceHint').textContent = PACE[pace];
+    el('modeHint').textContent = MODES[mode];
+    el('tEng').textContent = provider === 'groq' ? 'Groq' : 'OpenAI';
   }
 
-  function setStatus(text, kind) {
-    el('statusText').textContent = text;
-    el('dot').className = 'dot' + (kind ? ' ' + kind : '');
+  if (!m) { el('tSvc').textContent = 'Not in MentraOS'; paint(); return; }
+
+  // Animate the ayah timer locally: the backend pushes a duration, not ticks,
+  // so driving it here keeps the bar smooth without extra bridge traffic.
+  function tick() {
+    if (!timerMs) { el('vBar').style.width = '0'; return; }
+    var p = Math.min(1, (Date.now() - timerStart) / timerMs);
+    el('vBar').style.width = (p * 100) + '%';
+    if (p < 1) raf = requestAnimationFrame(tick);
   }
 
-  if (!m) { setStatus('Not running inside MentraOS', 'err'); paint(); return; }
+  function showVerse(v) {
+    if (!v) {
+      el('verseBody').style.display = 'none';
+      el('verseEmpty').style.display = '';
+      el('vBar').style.width = '0'; timerMs = 0;
+      return;
+    }
+    el('verseEmpty').style.display = 'none';
+    el('verseBody').style.display = '';
+    el('vName').textContent = v.surahName || 'Quran';
+    el('vRef').textContent = v.surah + ':' + v.ayah + (v.ayahTotal ? ' of ' + v.ayahTotal : '');
+    el('vConf').textContent = v.confidence ? v.confidence + '%' : '';
+    el('vAr').textContent = v.arabic || '';
+    el('vTl').textContent = v.transliteration || '';
+    el('vTr').textContent = v.translation || '';
+    if (v.timerMs && v.timerMs !== timerMs) {
+      timerMs = v.timerMs; timerStart = Date.now();
+      if (raf) cancelAnimationFrame(raf);
+      tick();
+    }
+  }
 
-  [].forEach.call(document.querySelectorAll('#providers .toggle-btn'), function (b) {
-    b.onclick = function () { provider = b.dataset.p; paint(); pushConfig(); };
-  });
-  [].forEach.call(document.querySelectorAll('#modes .toggle-btn'), function (b) {
-    b.onclick = function () { mode = b.dataset.m; paint(); pushConfig(); };
-  });
-  el('lang').onchange = pushConfig;
-
-  [].forEach.call(document.querySelectorAll('#paces .toggle-btn'), function (b) {
-    b.onclick = function () { pace = b.dataset.pace; paint(); m.send('control', { action: 'pace', pace: pace }); };
-  });
-  [].forEach.call(document.querySelectorAll('[data-nudge]'), function (b) {
-    b.onclick = function () { m.send('control', { action: 'nudge', factor: parseFloat(b.dataset.nudge) }); };
-  });
-  [].forEach.call(document.querySelectorAll('[data-act]'), function (b) {
-    b.onclick = function () { m.send('control', { action: b.dataset.act }); };
-  });
+  function showSearch(s) {
+    if (!s) { el('searchCard').style.display = 'none'; return; }
+    el('searchCard').style.display = '';
+    el('sAudio').textContent = (s.audioSec || 0).toFixed(1) + 's';
+    el('sWins').textContent = 'Lock ' + (s.wins || 0) + '/' + (s.winsRequired || 2);
+    el('sHeard').textContent = s.heard || '';
+    el('sCands').innerHTML = (s.candidates || []).map(function (c, i) {
+      return '<div class="cand' + (i === 0 ? ' top' : '') + '">' +
+        '<span class="r">' + c.surah + ':' + c.ayah + '</span>' +
+        '<span class="a">' + (c.arabic || '') + '</span>' +
+        '<span class="s">' + c.score + '%</span></div>';
+    }).join('') || '<div class="cand"><span class="r" style="color:var(--tc-3)">listening…</span></div>';
+    var n = s.winsRequired || 2, w = '';
+    for (var i = 0; i < n; i++) w += '<span class="win' + (i < (s.wins || 0) ? ' on' : '') + '"></span>';
+    el('sWinBar').innerHTML = w;
+  }
 
   function pushConfig() {
-    m.send('config', {
-      provider: provider,
-      mode: mode,
-      lang: el('lang').value,
-      apiKey: el('key').value.trim()   // '' leaves the stored key untouched
-    });
+    m.send('config', { provider:provider, mode:mode, lang:el('lang').value, apiKey:el('key').value.trim() });
   }
-
+  [].forEach.call(document.querySelectorAll('#provs .btn'), function (b) {
+    b.onclick = function () { provider = b.dataset.p; paint(); pushConfig(); }; });
+  [].forEach.call(document.querySelectorAll('#modes .btn'), function (b) {
+    b.onclick = function () { mode = b.dataset.m; paint(); pushConfig(); }; });
+  [].forEach.call(document.querySelectorAll('#paces .btn'), function (b) {
+    b.onclick = function () { pace = b.dataset.pace; paint(); m.send('control', { action:'pace', pace:pace }); }; });
+  [].forEach.call(document.querySelectorAll('[data-nudge]'), function (b) {
+    b.onclick = function () { m.send('control', { action:'nudge', factor:parseFloat(b.dataset.nudge) }); }; });
+  [].forEach.call(document.querySelectorAll('[data-act]'), function (b) {
+    b.onclick = function () { m.send('control', { action:b.dataset.act }); }; });
+  el('lang').onchange = pushConfig;
   el('save').onclick = function () {
     pushConfig();
     el('saveHint').textContent = 'Saved';
     setTimeout(function () { el('saveHint').textContent = ''; }, 1500);
   };
+  el('go').onclick = function () { m.send('control', { action:'toggle' }); };
 
-  el('toggle').onclick = function () { m.send('control', { action: 'toggle' }); };
-
-  // The tile is on-demand, so the background sends a full snapshot rather than
-  // deltas — whenever this mounts it is immediately correct.
   m.on('status', function (s) {
     if (s.provider) provider = s.provider;
     if (s.mode) mode = s.mode;
     if (s.pace) pace = s.pace;
     if (typeof s.lang === 'string') el('lang').value = s.lang;
     if (s.hasKey && !el('key').value) el('key').placeholder = 'key saved — type to replace';
-    if (s.version) el('ver').textContent = 'Taraweeh Companion · v' + s.version;
-    el('toggle').textContent = s.listening ? 'Stop Listening' : 'Start Listening';
-    el('toggle').classList.toggle('recording', !!s.listening);
-    setStatus(s.text || '—', s.kind || '');
-    el('verse').textContent = s.verse || '';
+    if (s.version) el('ver').textContent = 'v' + s.version;
+
+    el('dSvc').className = 'dot ' + (s.connected ? 'ok' : 'err');
+    el('tSvc').textContent = s.connected ? 'Online' : 'Offline';
+    el('dEng').className = 'dot ' + (s.hasKey ? 'ok' : 'warn');
+    el('dMatch').className = 'dot' + (s.kind ? ' ' + s.kind : '');
+    el('tMatch').textContent = s.text || 'Idle';
+
+    el('go').textContent = s.listening ? 'Stop Listening' : 'Start Listening';
+    el('go').classList.toggle('on', !!s.listening);
+
+    showVerse(s.ayah);
+    showSearch(s.listening ? (s.match || null) : null);
     paint();
   });
 
   paint();
-
-  // MUST be called once on bootstrap: it tells the host the WebView is mounted.
-  // Until it lands the host does not present the tile (it renders fine
-  // internally but shows blank) and every send stays buffered, so the
-  // background never sees 'hello' and never replies with a snapshot.
   m.ready();
   m.onOpen(function () { m.send('hello', {}); });
 })();

@@ -18,7 +18,7 @@ import { registerMiniapp } from '@mentra/miniapp/background';
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.0.6';
+const VERSION = '3.0.9';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -47,6 +47,9 @@ registerMiniapp((session: any) => {
   let statusText = 'Starting…';
   let statusKind = '';
   let lastVerse = '';
+  let verse: any = null;      // full ayah payload for the tile
+  let match: any = null;      // live search progress for the tile
+  let connected = false;
 
   // The tile is on-demand: it may not be open, and it may open long after the
   // background did. Push a full snapshot rather than deltas so whenever it
@@ -63,7 +66,10 @@ registerMiniapp((session: any) => {
         hasKey: !!apiKey,
         text: statusText,
         kind: statusKind,
+        connected,
         verse: lastVerse,
+        ayah: verse,
+        match,
       });
     } catch {}
   }
@@ -130,6 +136,13 @@ registerMiniapp((session: any) => {
       const pct = Math.round((state.confidence || 0) * 100);
       const ref = name + ' ' + state.surah + ':' + state.ayah;
       lastVerse = ref + ' — ' + translation;
+      verse = {
+        surah: state.surah, ayah: state.ayah, surahName: name,
+        ayahTotal: state.ayahTotal, arabic: state.arabic || '',
+        transliteration: translit, translation,
+        confidence: pct, timerMs: state.timerMs || 0, mode: state.mode,
+      };
+      match = null;
       setStatus('Locked · ' + pct + '%', 'ok');
       show(ref + '   ' + pct + '%', translation + (translit ? '\n\n' + translit : ''));
       return;
@@ -143,6 +156,18 @@ registerMiniapp((session: any) => {
     }
 
     show('Listening…', 'Searching for the ayah…');
+  }
+
+  function renderProgress(msg: any) {
+    match = {
+      audioSec: msg.audioSec || 0,
+      heard: msg.whisperText || '',
+      candidates: (msg.candidates || []).slice(0, 3),
+      wins: msg.lockProgress?.wins || 0,
+      winsRequired: msg.lockProgress?.winsRequired || 2,
+      coverage: msg.lockProgress?.coverage || 0,
+    };
+    pushStatus();
   }
 
   // ── Backend socket ───────────────────────────────────────────────────────
@@ -188,7 +213,8 @@ registerMiniapp((session: any) => {
 
     ws.onopen = () => {
       console.log('[Taraweeh] backend connected');
-      setStatus(apiKey ? 'Backend connected' : 'Add an API key below', apiKey ? 'ok' : '');
+      connected = true;
+      setStatus(apiKey ? 'Connected' : 'Add an API key below', apiKey ? 'ok' : '');
       sendInit();
       if (listening) send({ type: 'start' });
     };
@@ -202,6 +228,9 @@ registerMiniapp((session: any) => {
       }
       if (msg.type === 'state' && msg.state) {
         renderState(msg.state);
+        pushStatus();
+      } else if (msg.type === 'match_progress') {
+        renderProgress(msg);
       } else if (msg.type === 'error') {
         console.log('[Taraweeh] backend error:', msg.error);
         show('Problem', String(msg.error || 'Backend error'));
@@ -214,8 +243,9 @@ registerMiniapp((session: any) => {
 
     ws.onclose = () => {
       ws = null;
+      connected = false;
       if (!closing) {
-        setStatus('Backend disconnected — retrying', 'err');
+        setStatus('Reconnecting…', 'err');
         scheduleReconnect();
       }
     };
@@ -291,6 +321,7 @@ registerMiniapp((session: any) => {
   function stopListening() {
     if (!listening) return;
     listening = false;
+    match = null;
     setStatus('Stopped', '');
     stopAudio();
     send({ type: 'stop' });
