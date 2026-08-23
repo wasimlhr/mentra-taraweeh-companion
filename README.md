@@ -62,10 +62,21 @@ rate limits.
 ## Develop
 
     bun install
-    bun dev
+    bun run dev
+
+The CLI is **Bun-only** — it ships as TypeScript and runs under Bun, so use
+`bun` / `bunx`, not `npx` or Node. `bun run release` validates, builds, packs
+and serves an install QR; `bun run build` just produces the ZIP.
 
 Then scan the QR code: **Settings → Miniapp Developer Settings → Scan Miniapp
 QR Code** in the Mentra app.
+
+## Distribution
+
+Mentra 3.0 shipped without the Miniapp Store — only official Mentra miniapps
+are preinstalled, and the store is due back later in 2026. Until then this is
+installed by dev QR: run the dev server, then Settings > Miniapp Developer
+Settings > Scan Miniapp QR Code in the Mentra app.
 
 ## Status
 
