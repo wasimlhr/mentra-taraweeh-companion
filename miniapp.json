@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/@mentra/miniapp-cli/schema/miniapp.schema.json",
+  "packageName": "com.wasimlhr.taraweeh",
+  "version": "3.0.6",
+  "name": "Taraweeh Companion",
+  "description": "Follows live Quran recitation and shows the ayah on your glasses.",
+  "icon": "icon.png",
+  "type": "standard",
+  "sdkVersion": "0.3.0",
+  "minHostVersion": "1.42.0",
+  "entry": {
+    "background": "background/index.js"
+  },
+  "permissions": [
+    {
+      "type": "MICROPHONE",
+      "description": "Listens to the recitation to identify which ayah is being recited."
+    }
+  ],
+  "hardwareRequirements": [
+    {
+      "type": "DISPLAY",
+      "level": "REQUIRED",
+      "description": "Shows the current ayah and its translation."
+    },
+    {
+      "type": "MICROPHONE",
+      "level": "REQUIRED",
+      "description": "Captures the recitation."
+    }
+  ]
+}

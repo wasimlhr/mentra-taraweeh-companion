@@ -1,118 +1,87 @@
 # Taraweeh Companion — MentraOS
 
-Self-contained Mentra app: Quran recitation recognition on **G1/G2** glasses via MentraOS.
+Follows live Quran recitation and shows the current ayah, with translation, on
+MentraOS smart glasses.
 
-Everything lives in this folder — Mentra server (`src/`) + Quran pipeline (`backend/`).
+## What this is
 
----
+A **thin miniapp**. All recognition — the 6,236-ayah corpus, the IDF-weighted
+matcher, the anchor state machine, the reading-pace timer — runs in the
+Taraweeh Companion backend, which is shared with the Even Realities G2 build:
 
-## Publishing (G1 + G2)
+    glasses mic ──► miniapp background ──WebSocket──► backend ──► Whisper (Groq / OpenAI)
+                          ▲                              │
+                          └────── ayah + translation ◄────┘
 
-One Mentra app covers **both G1 and G2**. Full guide:
+Nothing is vendored. A matcher fix deploys once and reaches both platforms.
 
-→ **[PUBLISH.md](./PUBLISH.md)** (dev install → Railway → Mentra Store)
+> The previous version of this app was a cloud server on `@mentra/sdk` that
+> carried its own copy of the engine. That copy drifted about 60 commits behind
+> and was missing every recognition fix since v2.6.7 — including the one that
+> stopped Bismillah locking onto Al-Fatiha. MentraOS has since replaced
+> `@mentra/sdk` with the on-device `@mentra/miniapp` SDK, so the app was
+> rewritten rather than patched.
 
-## Steps 1–5 (quick start)
+## Layout
 
-### Step 1 — Register on console.mentra.glass
+    miniapp.json            manifest — package id, permissions, entry points
+    src/background/index.ts the whole client (~250 lines)
 
-1. Go to [console.mentra.glass](https://console.mentra.glass) → **Create App**
-2. **Package name:** e.g. `com.wasimlhr.taraweeh` (must match `.env` below)
-3. **Public URL:** your ngrok HTTPS URL (set in step 4)
-4. Copy the **API key**
+The background layer is **not Node and not a browser** — it is a bare JS engine
+(JavaScriptCore on iOS, QuickJS on Android). Only `fetch`, the native WebSocket
+bridge, timers and the session API exist. No `Buffer`, no DOM, no Node built-ins.
 
-### Step 2 — Permissions + settings
+## Audio
 
-1. **Permissions** → add **MICROPHONE**
-2. **Configuration Management** → **Import app_config.json**
-3. Select: `D:\G2_DEV\mentra-taraweeh-companion\app_config.json`
+`session.mic.onAudioChunk` delivers **base64-encoded PCM**, which is forwarded
+verbatim to the backend as `{"t":"a","d":"<base64>"}`. No decoding happens
+on-device, which is what keeps this viable in a bare JS engine.
 
-### Step 3 — Configure `.env`
+The host can also hand back **LC3** instead of PCM depending on the phone's mic
+mode. There is no LC3 decoder here, so that case is detected and reported on the
+glasses rather than being forwarded as noise.
 
-```powershell
-cd D:\G2_DEV\mentra-taraweeh-companion
-copy .env.example .env
-```
-
-Edit `.env`:
-
-```env
-PACKAGE_NAME=com.wasimlhr.taraweeh
-MENTRAOS_API_KEY=paste_key_from_console
-SHARED_GROQ_KEY=gsk_your_groq_key
-SHARED_OPENAI_KEY=sk_your_openai_key
-```
-
-### Step 4 — Install, run, expose
-
-```powershell
-bun install
-bun run dev
-```
-
-New terminal:
-
-```powershell
-ngrok http 3000
-```
-
-Paste the ngrok **HTTPS** URL into console.mentra.glass → your app → **Public URL**.
-
-### Step 5 — Start on glasses
-
-1. Open **Mentra** app on phone (G1 paired)
-2. Install / start **Taraweeh Companion**
-3. App **Settings** on phone: mode, surah hint, BYOK keys if needed
-4. Start the app and recite — verses appear on glasses
-5. **Webview URL** (console → MiniApp / Webview):  
-   `https://YOUR_HOST/webview`  
-   That page is the Even Hub phone UI (verse panel, prev/next), adapted for Mentra — it polls `/api/live`; mic and glasses stay on MentraOS.
-
----
-
-## Verify it works
-
-Server log when you start the app on phone:
-
-```
-[Mentra] Session ... user=you@email.com
-[Mentra] Pipeline v4 (provider=groq, shared=true, surah hint=0)
-```
-
-## Phone app settings (after importing app_config.json)
-
-| Setting | Purpose |
-|---|---|
-| Mode | Taraweeh vs Practice |
-| Surah hint | 0 = auto, 1–114 = hint |
-| Glasses bottom | Transliteration or translation |
-| API key mode | Shared (server) vs BYOK (your key) |
-
-## Touch controls (G1)
+## Controls
 
 | Gesture | Action |
 |---|---|
-| Tap | Next page / advance ayah |
-| Long press | Pause |
+| Single tap | Start / stop listening |
+| Swipe up | Previous ayah |
+| Swipe down | Next ayah |
+| Long press | Stop |
 
-## Folder layout
+## Configuration
 
-```
-mentra-taraweeh-companion/
-├── app_config.json      ← import in console (step 2)
-├── .env.example         ← copy to .env (step 3)
-├── src/                 ← Mentra AppServer
-├── backend/             ← Quran pipeline + data (bundled)
-└── scripts/
-```
+The backend is set by `BACKEND` in `src/background/index.ts`. It points at the
+shared deployment by default.
 
-## Troubleshooting
+Transcription keys are read from miniapp settings (`provider`, `groqApiKey`,
+`openaiApiKey`, `lang`). Each user brings their own key — a shared pool hits
+rate limits.
 
-- **Port 3000 in use:** `bun run kill-port` then `bun run dev`
-- **No mic / permission error:** add MICROPHONE in console, reinstall app
-- **No transcription:** check `SHARED_GROQ_KEY` / `SHARED_OPENAI_KEY` in `.env`
-- **Webhook not received:** Public URL must match ngrok; `PACKAGE_NAME` must match console
+## Develop
 
-## Original G2 app
+    bun install
+    bun run dev
 
-The Even Hub G2 version remains at `D:\G2_DEV\QuranLiveMeaning\taraweeh-companion`.
+The CLI is **Bun-only** — it ships as TypeScript and runs under Bun, so use
+`bun` / `bunx`, not `npx` or Node. `bun run release` validates, builds, packs
+and serves an install QR; `bun run build` just produces the ZIP.
+
+Then scan the QR code: **Settings → Miniapp Developer Settings → Scan Miniapp
+QR Code** in the Mentra app.
+
+## Distribution
+
+Mentra 3.0 shipped without the Miniapp Store — only official Mentra miniapps
+are preinstalled, and the store is due back later in 2026. Until then this is
+installed by dev QR: run the dev server, then Settings > Miniapp Developer
+Settings > Scan Miniapp QR Code in the Mentra app.
+
+## Status
+
+The rewrite has **not been run on hardware yet**. The backend transport was
+verified end to end (base64 PCM decoded correctly, reached Whisper, matched),
+but the MentraOS SDK surface — display, mic, input — is written against the
+current docs and needs a device to confirm. `@mentra/miniapp` is at sdkVersion
+0.3.0 and still moving.

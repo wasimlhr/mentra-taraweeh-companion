@@ -1,10 +1,6 @@
 node_modules/
-backend/node_modules/
-.env
-.env.local
-bun.lockb
-.DS_Store
-*.log
-.railway/
-.vercel/
 dist/
+build/
+.env
+*.log
+.DS_Store
