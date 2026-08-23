@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Taraweeh Companion</title>
+<style>
+/* Design tokens lifted from the G2 build so both apps read as one product. */
+:root {
+  --tc-highlight:#232323; --tc-1:#232323; --tc-2:#7B7B7B; --tc-3:#9a9a9a;
+  --tc-red:#e53935; --tc-green:#2ea44f; --tc-gold:#b7860b;
+  --bc-1:#FFFFFF; --bc-2:#EEEEEE; --bc-3:#e2e2e2; --bc-4:#d4d4d4;
+  --bc-accent:#FEF991; --bc-accent-press:#f4ef85;
+  --font:"FK Grotesk Neue","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --track-tight:-0.02em; --r:8px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tc-highlight:#FFFFFF; --tc-1:#FFFFFF; --tc-2:#8A8A8A; --tc-3:#666;
+    --tc-red:#f87171; --tc-green:#4ade80;
+    --bc-1:#111111; --bc-2:#1A1A1A; --bc-3:#2a2a2a; --bc-4:#3a3a3a;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bc-1); color: var(--tc-1);
+  font: 15px/1.5 var(--font); letter-spacing: var(--track-tight);
+  padding: max(16px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+}
+h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+.sub { font-size: 12px; color: var(--tc-2); margin-bottom: 18px; }
+.s-section {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--tc-2); margin: 18px 0 6px;
+}
+.s-card { background: var(--bc-1); border: 1px solid var(--bc-4); border-radius: var(--r); }
+.s-row { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; }
+.s-row + .s-row { border-top: 1px solid var(--bc-3); }
+.s-label { font-size: 13px; color: var(--tc-highlight); }
+.s-hint { font-size: 11px; color: var(--tc-2); }
+.s-hint a { color: var(--tc-gold); }
+.toggle-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.toggle-btn {
+  flex: 1 1 auto; font: inherit; font-size: 13px; padding: 9px 12px;
+  color: var(--tc-1); background: var(--bc-2);
+  border: 1px solid var(--bc-4); border-radius: var(--r); cursor: pointer;
+}
+.toggle-btn.active { background: var(--bc-accent); border-color: var(--bc-accent); color: #232323; font-weight: 500; }
+input, select {
+  font: inherit; font-size: 14px; width: 100%; padding: 10px;
+  background: var(--bc-2); color: var(--tc-1);
+  border: 1px solid var(--bc-4); border-radius: var(--r);
+}
+.btn-primary {
+  width: 100%; font: inherit; font-size: 15px; font-weight: 500; padding: 14px;
+  border-radius: var(--r); border: 1px solid var(--bc-4);
+  background: var(--bc-accent); color: #232323; cursor: pointer; margin-top: 10px;
+}
+.btn-primary.recording { background: var(--tc-red); border-color: var(--tc-red); color: #fff; }
+.btn-sm {
+  font: inherit; font-size: 13px; padding: 8px 12px; border-radius: var(--r);
+  border: 1px solid var(--bc-4); background: var(--bc-2); color: var(--tc-1); cursor: pointer;
+}
+.pill { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tc-2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tc-3); flex: none; }
+.dot.ok { background: var(--tc-green); }
+.dot.err { background: var(--tc-red); }
+#verse { font-size: 14px; color: var(--tc-1); margin-top: 8px; min-height: 1.4em; }
+.foot { text-align: center; font-size: 11px; color: var(--tc-3); margin-top: 22px; }
+</style>
+</head>
+<body>
+
+<h1>Quran Companion</h1>
+<div class="sub" id="ver">Taraweeh Companion</div>
+
+<div class="s-card">
+  <div class="s-row">
+    <div class="pill"><span class="dot" id="dot"></span><span id="statusText">Starting…</span></div>
+    <div id="verse"></div>
+    <button class="btn-primary" id="toggle">Start Listening</button>
+  </div>
+</div>
+
+<div class="s-section">Transcription engine</div>
+<div class="s-card">
+  <div class="s-row">
+    <div class="toggle-group" id="providers">
+      <button type="button" class="toggle-btn" data-p="groq">Groq</button>
+      <button type="button" class="toggle-btn" data-p="openai">OpenAI</button>
+    </div>
+    <span class="s-hint" id="engineHint" style="margin-top:6px"></span>
+    <input id="key" type="password" placeholder="API key" autocomplete="off" spellcheck="false" style="margin-top:8px" />
+    <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
+      <button class="btn-sm" id="save">Save</button>
+      <span class="s-hint" id="saveHint"></span>
+      <a class="s-hint" id="getKey" href="#" target="_blank" rel="noopener" style="margin-left:auto">Get a key →</a>
+    </div>
+    <span class="s-hint" style="margin-top:8px;color:var(--tc-3)">
+      Stored on this device, sent only to the recognition backend.
+    </span>
+  </div>
+</div>
+
+<div class="s-section">Reading</div>
+<div class="s-card">
+  <div class="s-row">
+    <span class="s-label">Mode</span>
+    <div class="toggle-group" id="modes">
+      <button type="button" class="toggle-btn" data-m="taraweeh">Taraweeh</button>
+      <button type="button" class="toggle-btn" data-m="practice">Practice</button>
+    </div>
+    <span class="s-hint" id="modeHint" style="margin-top:6px"></span>
+  </div>
+  <div class="s-row">
+    <span class="s-label">Translation</span>
+    <select id="lang">
+      <option value="">English (built-in)</option>
+      <option value="bn">Bengali</option>
+      <option value="zh">Chinese</option>
+      <option value="es">Spanish</option>
+      <option value="fr">French</option>
+      <option value="id">Indonesian</option>
+      <option value="ru">Russian</option>
+      <option value="sv">Swedish</option>
+      <option value="tr">Turkish</option>
+      <option value="ur">Urdu</option>
+    </select>
+  </div>
+</div>
+
+<div class="s-section">Glasses</div>
+<div class="s-card">
+  <div class="s-row">
+    <ul style="margin:0;padding-left:18px;font-size:13px;color:var(--tc-2);line-height:1.7">
+      <li><strong style="color:var(--tc-1)">Single tap</strong> — start / stop</li>
+      <li><strong style="color:var(--tc-1)">Swipe up / down</strong> — previous / next ayah</li>
+      <li><strong style="color:var(--tc-1)">Long press</strong> — stop</li>
+    </ul>
+  </div>
+</div>
+
+<div class="foot">Built for the Ummah</div>
+
+<script>
+(function () {
+  var m = window.mentra;
+  var el = function (id) { return document.getElementById(id); };
+  var provider = 'groq';
+  var mode = 'taraweeh';
+
+  var ENGINE = {
+    groq:   { note: 'Fastest (~350ms) with word timings.', link: 'https://console.groq.com/keys', ph: 'gsk_… (Groq API key)' },
+    openai: { note: 'Reliable and widely available (~450ms).', link: 'https://platform.openai.com/api-keys', ph: 'sk-… (OpenAI API key)' }
+  };
+  var MODE_NOTE = {
+    taraweeh: 'Follows the imam and auto-advances.',
+    practice: 'Locks the ayah you recite and stays there.'
+  };
+
+  function paint() {
+    [].forEach.call(document.querySelectorAll('#providers .toggle-btn'), function (b) {
+      b.classList.toggle('active', b.dataset.p === provider);
+    });
+    [].forEach.call(document.querySelectorAll('#modes .toggle-btn'), function (b) {
+      b.classList.toggle('active', b.dataset.m === mode);
+    });
+    el('engineHint').textContent = ENGINE[provider].note;
+    el('getKey').href = ENGINE[provider].link;
+    el('key').placeholder = ENGINE[provider].ph;
+    el('modeHint').textContent = MODE_NOTE[mode];
+  }
+
+  function setStatus(text, kind) {
+    el('statusText').textContent = text;
+    el('dot').className = 'dot' + (kind ? ' ' + kind : '');
+  }
+
+  if (!m) { setStatus('Not running inside MentraOS', 'err'); paint(); return; }
+
+  [].forEach.call(document.querySelectorAll('#providers .toggle-btn'), function (b) {
+    b.onclick = function () { provider = b.dataset.p; paint(); pushConfig(); };
+  });
+  [].forEach.call(document.querySelectorAll('#modes .toggle-btn'), function (b) {
+    b.onclick = function () { mode = b.dataset.m; paint(); pushConfig(); };
+  });
+  el('lang').onchange = pushConfig;
+
+  function pushConfig() {
+    m.send('config', {
+      provider: provider,
+      mode: mode,
+      lang: el('lang').value,
+      apiKey: el('key').value.trim()   // '' leaves the stored key untouched
+    });
+  }
+
+  el('save').onclick = function () {
+    pushConfig();
+    el('saveHint').textContent = 'Saved';
+    setTimeout(function () { el('saveHint').textContent = ''; }, 1500);
+  };
+
+  el('toggle').onclick = function () { m.send('control', { action: 'toggle' }); };
+
+  // The tile is on-demand, so the background sends a full snapshot rather than
+  // deltas — whenever this mounts it is immediately correct.
+  m.on('status', function (s) {
+    if (s.provider) provider = s.provider;
+    if (s.mode) mode = s.mode;
+    if (typeof s.lang === 'string') el('lang').value = s.lang;
+    if (s.hasKey && !el('key').value) el('key').placeholder = 'key saved — type to replace';
+    if (s.version) el('ver').textContent = 'Taraweeh Companion · v' + s.version;
+    el('toggle').textContent = s.listening ? 'Stop Listening' : 'Start Listening';
+    el('toggle').classList.toggle('recording', !!s.listening);
+    setStatus(s.text || '—', s.kind || '');
+    el('verse').textContent = s.verse || '';
+    paint();
+  });
+
+  paint();
+  m.send('hello', {});
+})();
+</script>
+</body>
+</html>

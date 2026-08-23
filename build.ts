@@ -1,16 +1,16 @@
 /**
- * Bundles the background layer into dist/background/index.js, the path
- * miniapp.json declares as the entry point.
+ * Bundles the two layers into the paths miniapp.json declares:
  *
- * There is no UI layer: this miniapp is driven entirely by glasses gestures and
- * renders straight to the display, so there is no tile to open and nothing for
- * a WebView to show.
+ *   dist/background/index.js   the always-on glasses logic
+ *   dist/ui/index.html         the on-demand phone tile
  *
  * Target is `browser`, not `node`. The background layer runs in a bare JS
  * engine (JavaScriptCore on iOS, QuickJS on Android) — no Node built-ins exist
- * there, and building for `node` would let a stray import resolve here and then
- * fail on the device.
+ * there, and building for `node` would let a stray import resolve at build time
+ * and then fail on the device.
  */
+import { copyFileSync, mkdirSync } from 'fs';
+
 const result = await Bun.build({
   entrypoints: ['src/background/index.ts'],
   outdir: 'dist/background',
@@ -33,3 +33,11 @@ if (!result.success) {
 for (const output of result.outputs) {
   console.log(`built ${output.path} (${(output.size / 1024).toFixed(1)} KB)`);
 }
+
+// The tile is a single static HTML file — a settings and status screen with no
+// framework, so there is nothing to bundle. Copy it verbatim. Without an
+// emitted UI the host has nothing to route the tile to and reports the miniapp
+// as unresolved.
+mkdirSync('dist/ui', { recursive: true });
+copyFileSync('src/ui/index.html', 'dist/ui/index.html');
+console.log('copied dist/ui/index.html');

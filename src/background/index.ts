@@ -17,6 +17,9 @@ import { registerMiniapp } from '@mentra/miniapp/background';
 /** Backend that runs the recognition engine. Same deployment the G2 app uses. */
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
+/** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
+const VERSION = '3.0.6';
+
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
 
@@ -36,6 +39,38 @@ registerMiniapp((session: any) => {
   let warnedRate = false;
   let lastRender = '';
   let loggedRender = false;
+  let provider = 'groq';
+  let apiKey = '';
+  let mode: 'taraweeh' | 'practice' = 'taraweeh';
+  let lang = '';
+  let statusText = 'Starting…';
+  let statusKind = '';
+  let lastVerse = '';
+
+  // The tile is on-demand: it may not be open, and it may open long after the
+  // background did. Push a full snapshot rather than deltas so whenever it
+  // mounts it is immediately correct.
+  function pushStatus() {
+    try {
+      session.ui.send('status', {
+        listening,
+        provider,
+        mode,
+        lang,
+        version: VERSION,
+        hasKey: !!apiKey,
+        text: statusText,
+        kind: statusKind,
+        verse: lastVerse,
+      });
+    } catch {}
+  }
+
+  function setStatus(text: string, kind?: string) {
+    statusText = text;
+    statusKind = kind || '';
+    pushStatus();
+  }
 
   // ── Display ──────────────────────────────────────────────────────────────
   // One full-canvas text element, deliberately. G1 and Vuzix Z100 cannot place
@@ -92,6 +127,8 @@ registerMiniapp((session: any) => {
     if (state.mode === 'LOCKED' || state.mode === 'PAUSED' || state.mode === 'RESUMING') {
       const pct = Math.round((state.confidence || 0) * 100);
       const ref = name + ' ' + state.surah + ':' + state.ayah;
+      lastVerse = ref + ' — ' + translation;
+      setStatus('Locked · ' + pct + '%', 'ok');
       show(ref + '   ' + pct + '%', translation + (translit ? '\n\n' + translit : ''));
       return;
     }
@@ -112,29 +149,21 @@ registerMiniapp((session: any) => {
   }
 
   function sendInit() {
-    // Engine settings. Keys are read from miniapp settings so each user brings
-    // their own, matching the G2 app: a shared pool would hit rate limits.
+    // Each user brings their own key — a shared pool would hit rate limits.
+    // The key is entered in the UI tile and kept in on-device storage.
     send({
       type: 'init',
       audioSource: 'g2',
       pipelineVersion: 'v4',
-      mode: 'taraweeh',
-      taraweehMode: true,
-      transcriptionProvider: setting('provider', 'groq'),
-      groqApiKey: setting('groqApiKey', ''),
-      openaiApiKey: setting('openaiApiKey', ''),
-      lang: setting('lang', ''),
+      mode,
+      taraweehMode: mode === 'taraweeh',
+      practiceMode: mode === 'practice',
+      transcriptionProvider: provider,
+      groqApiKey: provider === 'groq' ? apiKey : '',
+      openaiApiKey: provider === 'openai' ? apiKey : '',
+      lang,
       preferredSurah: 0,
     });
-  }
-
-  function setting(key: string, fallback: string): string {
-    try {
-      const v = session.settings?.get?.(key);
-      return typeof v === 'string' && v.trim() ? v.trim() : fallback;
-    } catch {
-      return fallback;
-    }
   }
 
   function connect() {
@@ -148,6 +177,7 @@ registerMiniapp((session: any) => {
 
     ws.onopen = () => {
       console.log('[Taraweeh] backend connected');
+      setStatus(apiKey ? 'Backend connected' : 'Add an API key below', apiKey ? 'ok' : '');
       sendInit();
       if (listening) send({ type: 'start' });
     };
@@ -166,13 +196,17 @@ registerMiniapp((session: any) => {
         show('Problem', String(msg.error || 'Backend error'));
       } else if (msg.type === 'sys_status' && msg.component === 'model' && msg.status === 'error') {
         // Surface a bad or missing key rather than sitting on "Searching…".
+        setStatus('Transcription error — check the key', 'err');
         show('Check your API key', String(msg.message || 'Transcription failed'));
       }
     };
 
     ws.onclose = () => {
       ws = null;
-      if (!closing) scheduleReconnect();
+      if (!closing) {
+        setStatus('Backend disconnected — retrying', 'err');
+        scheduleReconnect();
+      }
     };
 
     ws.onerror = () => {
@@ -229,7 +263,13 @@ registerMiniapp((session: any) => {
   // ── Control ──────────────────────────────────────────────────────────────
   function startListening() {
     if (listening) return;
+    if (!apiKey) {
+      setStatus('Add an API key first', 'err');
+      show('API key needed', 'Open the Taraweeh Companion tile on your phone and add a key.');
+      return;
+    }
     listening = true;
+    setStatus('Listening…', 'ok');
     lastRender = '';
     show('Listening…', 'Searching for the ayah…');
     connect();
@@ -240,6 +280,7 @@ registerMiniapp((session: any) => {
   function stopListening() {
     if (!listening) return;
     listening = false;
+    setStatus('Stopped', '');
     stopAudio();
     send({ type: 'stop' });
     // Socket stays open: reconnecting costs a full pipeline rebuild on resume.
@@ -277,6 +318,49 @@ registerMiniapp((session: any) => {
     ws = null;
   });
 
-  connect();
+  // ── Tile (UI layer) ──────────────────────────────────────────────────────
+  session.ui.on('hello', () => pushStatus());
+
+  session.ui.on('config', async (cfg: any) => {
+    provider = cfg?.provider === 'openai' ? 'openai' : 'groq';
+    mode = cfg?.mode === 'practice' ? 'practice' : 'taraweeh';
+    if (typeof cfg?.lang === 'string') lang = cfg.lang;
+    // An empty key means "unchanged" — the tile cannot read back what is
+    // stored, so it must not be able to blank it by saving other settings.
+    if (typeof cfg?.apiKey === 'string' && cfg.apiKey.trim()) apiKey = cfg.apiKey.trim();
+    try {
+      await session.storage.set('provider', provider);
+      await session.storage.set('mode', mode);
+      await session.storage.set('lang', lang);
+      if (apiKey) await session.storage.set('apiKey', apiKey);
+    } catch (e) {
+      console.log('[Taraweeh] could not persist config:', e);
+    }
+    setStatus(apiKey ? 'Settings saved' : 'Add an API key', apiKey ? 'ok' : '');
+    sendInit();   // re-init the pipeline with the new engine / mode / language
+  });
+
+  session.ui.on('control', (c: any) => {
+    if (c?.action === 'toggle') {
+      if (listening) stopListening(); else startListening();
+    }
+  });
+
+  // Restore config before the first connect so init carries the key.
+  (async () => {
+    try {
+      const p = await session.storage.get('provider');
+      const k = await session.storage.get('apiKey');
+      const md = await session.storage.get('mode');
+      const lg = await session.storage.get('lang');
+      if (p === 'openai' || p === 'groq') provider = p;
+      if (md === 'practice' || md === 'taraweeh') mode = md;
+      if (typeof lg === 'string') lang = lg;
+      if (k) apiKey = k;
+    } catch {}
+    setStatus(apiKey ? 'Ready — tap to listen' : 'Add an API key in this tile', apiKey ? 'ok' : '');
+    connect();
+  })();
+
   showIdle();
 });
