@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "mentra-miniapp dev",
     "build": "bun build.ts",
+    "pack:win": "NODE_ENV=production bun run build && bun scripts/pack-win.ts",
+    "release:win": "bun run pack:win && mentra-miniapp release",
     "release": "mentra-miniapp release",
     "pack": "mentra-miniapp pack"
   },

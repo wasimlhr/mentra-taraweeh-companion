@@ -347,8 +347,15 @@ registerMiniapp((session: any) => {
       await session.storage.set('mode', mode);
       await session.storage.set('lang', lang);
       if (apiKey) await session.storage.set('apiKey', apiKey);
+      // Read straight back: a silent no-op write is the failure mode that looks
+      // exactly like "the key did not save".
+      const check = await session.storage.get('apiKey');
+      console.log('[Taraweeh] persist: provider=' + provider + ' pace=' + pace +
+        ' keyLen=' + (apiKey ? apiKey.length : 0) +
+        ' readback=' + (check ? check.length + ' chars' : 'NULL') +
+        ' keys=' + JSON.stringify(await session.storage.keys()));
     } catch (e) {
-      console.log('[Taraweeh] could not persist config:', e);
+      console.log('[Taraweeh] could not persist config: ' + e);
     }
     setStatus(apiKey ? 'Settings saved' : 'Add an API key', apiKey ? 'ok' : '');
     sendInit();   // re-init the pipeline with the new engine / mode / language
@@ -395,7 +402,11 @@ registerMiniapp((session: any) => {
       if (pc === 'fast' || pc === 'slow' || pc === 'follow') pace = pc;
       if (typeof lg === 'string') lang = lg;
       if (k) apiKey = k;
-    } catch {}
+      console.log('[Taraweeh] restore: provider=' + provider + ' mode=' + mode +
+        ' pace=' + pace + ' key=' + (apiKey ? apiKey.length + ' chars' : 'NONE'));
+    } catch (e) {
+      console.log('[Taraweeh] restore failed: ' + e);
+    }
     setStatus(apiKey ? 'Ready — tap to listen' : 'Add an API key in this tile', apiKey ? 'ok' : '');
     connect();
   })();
