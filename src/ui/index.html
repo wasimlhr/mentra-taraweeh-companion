@@ -134,33 +134,185 @@ details[open] > summary::before { content:'\25BE  '; }
 
 <button class="go" id="go">Start Listening</button>
 
-<div class="sec">Controls</div>
+<div class="sec">Mode</div>
 <div class="card">
   <div class="row">
-    <span class="lbl">Pace</span>
-    <div class="grp" id="paces">
-      <button class="btn" data-pace="slow">Slow</button>
-      <button class="btn" data-pace="follow">Follow</button>
-      <button class="btn" data-pace="fast">Fast</button>
-    </div>
-    <span class="hint" id="paceHint"></span>
-  </div>
-  <div class="row">
-    <span class="lbl">Ayah</span>
-    <div class="grp">
-      <button class="btn" data-act="manual_prev">&larr; Prev</button>
-      <button class="btn" data-nudge="0.85">Slower</button>
-      <button class="btn" data-nudge="1.18">Faster</button>
-      <button class="btn" data-act="manual_advance">Next &rarr;</button>
-    </div>
-  </div>
-  <div class="row">
-    <span class="lbl">Mode</span>
     <div class="grp" id="modes">
       <button class="btn" data-m="taraweeh">Taraweeh</button>
       <button class="btn" data-m="practice">Practice</button>
     </div>
     <span class="hint" id="modeHint"></span>
+  </div>
+</div>
+
+<!-- Taraweeh: the imam sets the pace and the display auto-advances on a timer. -->
+<div id="taraweehOnly">
+  <div class="sec">Taraweeh</div>
+  <div class="card">
+    <div class="row">
+      <span class="lbl">Reciter pace</span>
+      <div class="grp" id="paces">
+        <button class="btn" data-pace="slow">Slow</button>
+        <button class="btn" data-pace="follow">Follow</button>
+        <button class="btn" data-pace="fast">Fast</button>
+      </div>
+      <span class="hint" id="paceHint"></span>
+    </div>
+    <div class="row">
+      <span class="lbl">Nudge the timer</span>
+      <div class="grp">
+        <button class="btn" data-nudge="0.85">Slower</button>
+        <button class="btn" data-nudge="1.18">Faster</button>
+      </div>
+      <span class="hint">One-off correction when the display drifts from the imam.</span>
+    </div>
+    <div class="row">
+      <span class="lbl">Rakat</span>
+      <div class="grp"><button class="btn" data-act="reset_rakat">Reset rakat count</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Practice: no timer and no auto-advance, so pace and rakat do not apply. -->
+<div id="practiceOnly" style="display:none">
+  <div class="sec">Practice</div>
+  <div class="card">
+    <div class="row">
+      <span class="lbl">Start from surah</span>
+      <select id="surah">
+        <option value="0">Any surah</option>
+        <option value="1">1. Al-Fatihah</option>
+        <option value="2">2. Al-Baqarah</option>
+        <option value="3">3. Al-Imran</option>
+        <option value="4">4. An-Nisa</option>
+        <option value="5">5. Al-Ma"idah</option>
+        <option value="6">6. Al-An"am</option>
+        <option value="7">7. Al-A"raf</option>
+        <option value="8">8. Al-Anfal</option>
+        <option value="9">9. At-Tawbah</option>
+        <option value="10">10. Yunus</option>
+        <option value="11">11. Hud</option>
+        <option value="12">12. Yusuf</option>
+        <option value="13">13. Ar-Ra"d</option>
+        <option value="14">14. Ibrahim</option>
+        <option value="15">15. Al-Hijr</option>
+        <option value="16">16. An-Nahl</option>
+        <option value="17">17. Al-Isra</option>
+        <option value="18">18. Al-Kahf</option>
+        <option value="19">19. Maryam</option>
+        <option value="20">20. Ta-Ha</option>
+        <option value="21">21. Al-Anbiya</option>
+        <option value="22">22. Al-Hajj</option>
+        <option value="23">23. Al-Mu"minun</option>
+        <option value="24">24. An-Nur</option>
+        <option value="25">25. Al-Furqan</option>
+        <option value="26">26. Ash-Shu"ara</option>
+        <option value="27">27. An-Naml</option>
+        <option value="28">28. Al-Qasas</option>
+        <option value="29">29. Al-Ankabut</option>
+        <option value="30">30. Ar-Rum</option>
+        <option value="31">31. Luqman</option>
+        <option value="32">32. As-Sajdah</option>
+        <option value="33">33. Al-Ahzab</option>
+        <option value="34">34. Saba</option>
+        <option value="35">35. Fatir</option>
+        <option value="36">36. Ya-Sin</option>
+        <option value="37">37. As-Saffat</option>
+        <option value="38">38. Sad</option>
+        <option value="39">39. Az-Zumar</option>
+        <option value="40">40. Ghafir</option>
+        <option value="41">41. Fussilat</option>
+        <option value="42">42. Ash-Shura</option>
+        <option value="43">43. Az-Zukhruf</option>
+        <option value="44">44. Ad-Dukhan</option>
+        <option value="45">45. Al-Jathiyah</option>
+        <option value="46">46. Al-Ahqaf</option>
+        <option value="47">47. Muhammad</option>
+        <option value="48">48. Al-Fath</option>
+        <option value="49">49. Al-Hujurat</option>
+        <option value="50">50. Qaf</option>
+        <option value="51">51. Adh-Dhariyat</option>
+        <option value="52">52. At-Tur</option>
+        <option value="53">53. An-Najm</option>
+        <option value="54">54. Al-Qamar</option>
+        <option value="55">55. Ar-Rahman</option>
+        <option value="56">56. Al-Waqi"ah</option>
+        <option value="57">57. Al-Hadid</option>
+        <option value="58">58. Al-Mujadila</option>
+        <option value="59">59. Al-Hashr</option>
+        <option value="60">60. Al-Mumtahanah</option>
+        <option value="61">61. As-Saf</option>
+        <option value="62">62. Al-Jumu"ah</option>
+        <option value="63">63. Al-Munafiqun</option>
+        <option value="64">64. At-Taghabun</option>
+        <option value="65">65. At-Talaq</option>
+        <option value="66">66. At-Tahrim</option>
+        <option value="67">67. Al-Mulk</option>
+        <option value="68">68. Al-Qalam</option>
+        <option value="69">69. Al-Haqqah</option>
+        <option value="70">70. Al-Ma"arij</option>
+        <option value="71">71. Nuh</option>
+        <option value="72">72. Al-Jinn</option>
+        <option value="73">73. Al-Muzzammil</option>
+        <option value="74">74. Al-Muddaththir</option>
+        <option value="75">75. Al-Qiyamah</option>
+        <option value="76">76. Al-Insan</option>
+        <option value="77">77. Al-Mursalat</option>
+        <option value="78">78. An-Naba</option>
+        <option value="79">79. An-Nazi"at</option>
+        <option value="80">80. Abasa</option>
+        <option value="81">81. At-Takwir</option>
+        <option value="82">82. Al-Infitar</option>
+        <option value="83">83. Al-Mutaffifin</option>
+        <option value="84">84. Al-Inshiqaq</option>
+        <option value="85">85. Al-Buruj</option>
+        <option value="86">86. At-Tariq</option>
+        <option value="87">87. Al-A"la</option>
+        <option value="88">88. Al-Ghashiyah</option>
+        <option value="89">89. Al-Fajr</option>
+        <option value="90">90. Al-Balad</option>
+        <option value="91">91. Ash-Shams</option>
+        <option value="92">92. Al-Layl</option>
+        <option value="93">93. Ad-Duha</option>
+        <option value="94">94. Ash-Sharh</option>
+        <option value="95">95. At-Tin</option>
+        <option value="96">96. Al-Alaq</option>
+        <option value="97">97. Al-Qadr</option>
+        <option value="98">98. Al-Bayyinah</option>
+        <option value="99">99. Az-Zalzalah</option>
+        <option value="100">100. Al-Adiyat</option>
+        <option value="101">101. Al-Qari"ah</option>
+        <option value="102">102. At-Takathur</option>
+        <option value="103">103. Al-Asr</option>
+        <option value="104">104. Al-Humazah</option>
+        <option value="105">105. Al-Fil</option>
+        <option value="106">106. Quraysh</option>
+        <option value="107">107. Al-Ma"un</option>
+        <option value="108">108. Al-Kawthar</option>
+        <option value="109">109. Al-Kafirun</option>
+        <option value="110">110. An-Nasr</option>
+        <option value="111">111. Al-Masad</option>
+        <option value="112">112. Al-Ikhlas</option>
+        <option value="113">113. Al-Falaq</option>
+        <option value="114">114. An-Nas</option>
+
+      </select>
+      <span class="hint">Narrows the first match. Recite from any surah and it follows you.</span>
+    </div>
+  </div>
+</div>
+
+<div class="sec">Ayah</div>
+<div class="card">
+  <div class="row">
+    <div class="grp">
+      <button class="btn" data-act="manual_prev">&larr; Previous</button>
+      <button class="btn" data-act="manual_advance">Next &rarr;</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="grp"><button class="btn" data-act="reset">Search again</button></div>
+    <span class="hint">Drops the current lock and hunts for the verse from scratch.</span>
   </div>
 </div>
 
@@ -191,13 +343,6 @@ details[open] > summary::before { content:'\25BE  '; }
         <option value="sv">Swedish</option><option value="tr">Turkish</option>
         <option value="ur">Urdu</option>
       </select>
-    </div>
-    <div class="row">
-      <span class="lbl">Reset</span>
-      <div class="grp">
-        <button class="btn" data-act="reset">Search again</button>
-        <button class="btn" data-act="reset_rakat">Reset rakat</button>
-      </div>
     </div>
     <div class="row">
       <span class="lbl">Glasses gestures</span>
@@ -237,6 +382,10 @@ window.onerror = function (msg, src, line) {
     el('key').placeholder = ENGINE[provider].ph;
     el('paceHint').textContent = PACE[pace];
     el('modeHint').textContent = MODES[mode];
+    // Pace, nudge and rakat only exist in Taraweeh: Practice runs with no timer
+    // and no auto-advance, so those controls would be dead knobs there.
+    el('taraweehOnly').style.display = mode === 'taraweeh' ? '' : 'none';
+    el('practiceOnly').style.display = mode === 'practice' ? '' : 'none';
     el('tEng').textContent = provider === 'groq' ? 'Groq' : 'OpenAI';
   }
 
@@ -291,7 +440,11 @@ window.onerror = function (msg, src, line) {
   }
 
   function pushConfig() {
-    m.send('config', { provider:provider, mode:mode, lang:el('lang').value, apiKey:el('key').value.trim() });
+    m.send('config', {
+      provider: provider, mode: mode, lang: el('lang').value,
+      surah: parseInt(el('surah').value, 10) || 0,
+      apiKey: el('key').value.trim()
+    });
   }
   [].forEach.call(document.querySelectorAll('#provs .btn'), function (b) {
     b.onclick = function () { provider = b.dataset.p; paint(); pushConfig(); }; });
@@ -304,6 +457,7 @@ window.onerror = function (msg, src, line) {
   [].forEach.call(document.querySelectorAll('[data-act]'), function (b) {
     b.onclick = function () { m.send('control', { action:b.dataset.act }); }; });
   el('lang').onchange = pushConfig;
+  el('surah').onchange = pushConfig;
   el('save').onclick = function () {
     pushConfig();
     el('saveHint').textContent = 'Saved';
@@ -316,6 +470,7 @@ window.onerror = function (msg, src, line) {
     if (s.mode) mode = s.mode;
     if (s.pace) pace = s.pace;
     if (typeof s.lang === 'string') el('lang').value = s.lang;
+    if (typeof s.surah === 'number') el('surah').value = String(s.surah);
     if (s.hasKey && !el('key').value) el('key').placeholder = 'key saved — type to replace';
     if (s.version) el('ver').textContent = 'v' + s.version;
 

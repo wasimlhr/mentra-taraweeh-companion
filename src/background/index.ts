@@ -44,6 +44,7 @@ registerMiniapp((session: any) => {
   let mode: 'taraweeh' | 'practice' = 'taraweeh';
   let pace: 'slow' | 'follow' | 'fast' = 'follow';
   let lang = '';
+  let surah = 0;   // Practice: narrow the first match to one surah
   let statusText = 'Starting…';
   let statusKind = '';
   let lastVerse = '';
@@ -62,6 +63,7 @@ registerMiniapp((session: any) => {
         mode,
         pace,
         lang,
+        surah,
         version: VERSION,
         hasKey: !!apiKey,
         text: statusText,
@@ -191,7 +193,7 @@ registerMiniapp((session: any) => {
       lang,
       fastMode: pace === 'fast',
       slowMode: pace === 'slow',
-      preferredSurah: 0,
+      preferredSurah: mode === 'practice' ? surah : 0,
     });
     sendPace();
   }
@@ -370,6 +372,7 @@ registerMiniapp((session: any) => {
     provider = cfg?.provider === 'openai' ? 'openai' : 'groq';
     mode = cfg?.mode === 'practice' ? 'practice' : 'taraweeh';
     if (typeof cfg?.lang === 'string') lang = cfg.lang;
+    if (typeof cfg?.surah === 'number') surah = cfg.surah;
     // An empty key means "unchanged" — the tile cannot read back what is
     // stored, so it must not be able to blank it by saving other settings.
     if (typeof cfg?.apiKey === 'string' && cfg.apiKey.trim()) apiKey = cfg.apiKey.trim();
@@ -377,6 +380,7 @@ registerMiniapp((session: any) => {
       await session.storage.set('provider', provider);
       await session.storage.set('mode', mode);
       await session.storage.set('lang', lang);
+      await session.storage.set('surah', String(surah));
       if (apiKey) await session.storage.set('apiKey', apiKey);
       // Read straight back: a silent no-op write is the failure mode that looks
       // exactly like "the key did not save".
@@ -428,10 +432,12 @@ registerMiniapp((session: any) => {
       const md = await session.storage.get('mode');
       const pc = await session.storage.get('pace');
       const lg = await session.storage.get('lang');
+      const sr = await session.storage.get('surah');
       if (p === 'openai' || p === 'groq') provider = p;
       if (md === 'practice' || md === 'taraweeh') mode = md;
       if (pc === 'fast' || pc === 'slow' || pc === 'follow') pace = pc;
       if (typeof lg === 'string') lang = lg;
+      if (sr) surah = parseInt(sr, 10) || 0;
       if (k) apiKey = k;
       console.log('[Taraweeh] restore: provider=' + provider + ' mode=' + mode +
         ' pace=' + pace + ' key=' + (apiKey ? apiKey.length + ' chars' : 'NONE'));
