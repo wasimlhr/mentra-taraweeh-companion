@@ -289,7 +289,11 @@ registerMiniapp((session: any) => {
   }
 
   // ── Input ────────────────────────────────────────────────────────────────
+  // Touch owns tap and swipe; buttons own long-press only. A temple tap can
+  // surface as BOTH onTouch('single_tap') and onButtonPress({short}) — if both
+  // toggled, the two would cancel out and the tap would look dead.
   session.input.onTouch((touch: any) => {
+    console.log('[Taraweeh] touch:', touch?.kind);
     switch (touch.kind) {
       case 'single_tap':
         if (listening) stopListening(); else startListening();
@@ -306,9 +310,8 @@ registerMiniapp((session: any) => {
   });
 
   session.input.onButtonPress((press: any) => {
-    if (press.pressType === 'long') stopListening();
-    else if (listening) stopListening();
-    else startListening();
+    console.log('[Taraweeh] button:', press?.buttonId, press?.pressType);
+    if (press?.pressType === 'long') stopListening();
   });
 
   session.events?.onDisconnected?.(() => {

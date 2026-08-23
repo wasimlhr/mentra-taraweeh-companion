@@ -71,7 +71,8 @@ input, select {
 .foot { text-align: center; font-size: 11px; color: var(--tc-3); margin-top: 22px; }
 </style>
 </head>
-<body>
+<body style="background:#111;color:#fff;min-height:100vh">
+<noscript style="color:#fff">JavaScript is disabled.</noscript>
 
 <h1>Quran Companion</h1>
 <div class="sub" id="ver">Taraweeh Companion</div>
@@ -145,7 +146,15 @@ input, select {
 <div class="foot">Built for the Ummah</div>
 
 <script>
+window.onerror = function (msg, src, line) {
+  try { console.log('[Taraweeh UI] error: ' + msg + ' @' + line); } catch (e) {}
+  var b = document.body;
+  if (b) b.insertAdjacentHTML('afterbegin',
+    '<div style="background:#c00;color:#fff;padding:10px;font:13px sans-serif">UI error: ' + msg + '</div>');
+};
 (function () {
+  console.log('[Taraweeh UI] script running, mentra=' + (typeof window.mentra));
+  // (geometry probe removed — layout confirmed correct on device)
   var m = window.mentra;
   var el = function (id) { return document.getElementById(id); };
   var provider = 'groq';
@@ -221,7 +230,13 @@ input, select {
   });
 
   paint();
-  m.send('hello', {});
+
+  // MUST be called once on bootstrap: it tells the host the WebView is mounted.
+  // Until it lands the host does not present the tile (it renders fine
+  // internally but shows blank) and every send stays buffered, so the
+  // background never sees 'hello' and never replies with a snapshot.
+  m.ready();
+  m.onOpen(function () { m.send('hello', {}); });
 })();
 </script>
 </body>
