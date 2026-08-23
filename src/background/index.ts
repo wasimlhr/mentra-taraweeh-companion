@@ -18,7 +18,7 @@ import { registerMiniapp } from '@mentra/miniapp/background';
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.0.9';
+const VERSION = '3.1.0';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -44,7 +44,8 @@ registerMiniapp((session: any) => {
   let mode: 'taraweeh' | 'practice' = 'taraweeh';
   let pace: 'slow' | 'follow' | 'fast' = 'follow';
   let lang = '';
-  let surah = 0;   // Practice: narrow the first match to one surah
+  let surah = 0;          // Practice: which surah
+  let onlySurah = true;   // Practice: pin the search to it rather than bias
   let statusText = 'Starting…';
   let statusKind = '';
   let lastVerse = '';
@@ -64,6 +65,7 @@ registerMiniapp((session: any) => {
         pace,
         lang,
         surah,
+        onlySurah,
         version: VERSION,
         hasKey: !!apiKey,
         text: statusText,
@@ -194,6 +196,9 @@ registerMiniapp((session: any) => {
       fastMode: pace === 'fast',
       slowMode: pace === 'slow',
       preferredSurah: mode === 'practice' ? surah : 0,
+      // Only Practice pins the search: Taraweeh follows an imam who picks the
+      // surah, so restricting there would strand the display.
+      restrictSurah: mode === 'practice' && onlySurah ? surah : 0,
     });
     sendPace();
   }
@@ -373,6 +378,7 @@ registerMiniapp((session: any) => {
     mode = cfg?.mode === 'practice' ? 'practice' : 'taraweeh';
     if (typeof cfg?.lang === 'string') lang = cfg.lang;
     if (typeof cfg?.surah === 'number') surah = cfg.surah;
+    if (typeof cfg?.onlySurah === 'boolean') onlySurah = cfg.onlySurah;
     // An empty key means "unchanged" — the tile cannot read back what is
     // stored, so it must not be able to blank it by saving other settings.
     if (typeof cfg?.apiKey === 'string' && cfg.apiKey.trim()) apiKey = cfg.apiKey.trim();
@@ -381,6 +387,7 @@ registerMiniapp((session: any) => {
       await session.storage.set('mode', mode);
       await session.storage.set('lang', lang);
       await session.storage.set('surah', String(surah));
+      await session.storage.set('onlySurah', onlySurah ? '1' : '0');
       if (apiKey) await session.storage.set('apiKey', apiKey);
       // Read straight back: a silent no-op write is the failure mode that looks
       // exactly like "the key did not save".
@@ -433,11 +440,13 @@ registerMiniapp((session: any) => {
       const pc = await session.storage.get('pace');
       const lg = await session.storage.get('lang');
       const sr = await session.storage.get('surah');
+      const os = await session.storage.get('onlySurah');
       if (p === 'openai' || p === 'groq') provider = p;
       if (md === 'practice' || md === 'taraweeh') mode = md;
       if (pc === 'fast' || pc === 'slow' || pc === 'follow') pace = pc;
       if (typeof lg === 'string') lang = lg;
       if (sr) surah = parseInt(sr, 10) || 0;
+      if (os !== null && os !== undefined) onlySurah = os === '1';
       if (k) apiKey = k;
       console.log('[Taraweeh] restore: provider=' + provider + ' mode=' + mode +
         ' pace=' + pace + ' key=' + (apiKey ? apiKey.length + ' chars' : 'NONE'));

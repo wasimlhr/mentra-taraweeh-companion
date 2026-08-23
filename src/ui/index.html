@@ -310,7 +310,11 @@ details[open] > summary::before { content:'\25BE  '; }
         <option value="114">114. An-Nas</option>
 
       </select>
-      <span class="hint">Narrows the first match. Recite from any surah and it follows you.</span>
+      <div class="grp" id="onlys" style="margin-top:6px">
+        <button class="btn" data-only="1">Only this surah</button>
+        <button class="btn" data-only="0">Allow any surah</button>
+      </div>
+      <span class="hint" id="onlyHint"></span>
     </div>
   </div>
 </div>
@@ -373,7 +377,7 @@ window.onerror = function (msg, src, line) {
 (function () {
   var m = window.mentra;
   var el = function (id) { return document.getElementById(id); };
-  var provider = 'groq', mode = 'taraweeh', pace = 'follow';
+  var provider = 'groq', mode = 'taraweeh', pace = 'follow', only = 1;
   var timerStart = 0, timerMs = 0, raf = null;
 
   var ENGINE = {
@@ -390,6 +394,13 @@ window.onerror = function (msg, src, line) {
   }
   function paint() {
     mark('#provs .btn','p',provider); mark('#modes .btn','m',mode); mark('#paces .btn','pace',pace);
+    mark('#onlys .btn','only',String(only));
+    var picked = el('surah').value !== '0';
+    el('onlys').style.display = picked ? '' : 'none';
+    el('onlyHint').textContent = !picked
+      ? 'Pick a surah to pin the search to it.'
+      : (only ? 'Matches only inside this surah — nothing else can lock.'
+              : 'Prefers this surah but will still lock a verse from another.');
     el('engHint').textContent = ENGINE[provider].note;
     el('getKey').href = ENGINE[provider].link;
     el('key').placeholder = ENGINE[provider].ph;
@@ -456,6 +467,7 @@ window.onerror = function (msg, src, line) {
     m.send('config', {
       provider: provider, mode: mode, lang: el('lang').value,
       surah: parseInt(el('surah').value, 10) || 0,
+      onlySurah: !!only,
       apiKey: el('key').value.trim()
     });
   }
@@ -470,7 +482,10 @@ window.onerror = function (msg, src, line) {
   [].forEach.call(document.querySelectorAll('[data-act]'), function (b) {
     b.onclick = function () { m.send('control', { action:b.dataset.act }); }; });
   el('lang').onchange = pushConfig;
-  el('surah').onchange = pushConfig;
+  el('surah').onchange = function () { paint(); pushConfig(); };
+  [].forEach.call(document.querySelectorAll('#onlys .btn'), function (b) {
+    b.onclick = function () { only = parseInt(b.dataset.only, 10); paint(); pushConfig(); };
+  });
   el('save').onclick = function () {
     pushConfig();
     el('saveHint').textContent = 'Saved';
@@ -484,6 +499,7 @@ window.onerror = function (msg, src, line) {
     if (s.pace) pace = s.pace;
     if (typeof s.lang === 'string') el('lang').value = s.lang;
     if (typeof s.surah === 'number') el('surah').value = String(s.surah);
+    if (typeof s.onlySurah === 'boolean') only = s.onlySurah ? 1 : 0;
     if (s.hasKey && !el('key').value) el('key').placeholder = 'key saved — type to replace';
     if (s.version) el('ver').textContent = 'v' + s.version;
 

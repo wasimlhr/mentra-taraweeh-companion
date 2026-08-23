@@ -1,6 +1,6 @@
 {
   "name": "mentra-taraweeh-companion",
-  "version": "3.0.9",
+  "version": "3.1.0",
   "description": "Taraweeh Companion — MentraOS miniapp. Live Quran recitation tracking on smart glasses.",
   "private": true,
   "type": "module",
