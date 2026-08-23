@@ -42,6 +42,7 @@ registerMiniapp((session: any) => {
   let provider = 'groq';
   let apiKey = '';
   let mode: 'taraweeh' | 'practice' = 'taraweeh';
+  let pace: 'slow' | 'follow' | 'fast' = 'follow';
   let lang = '';
   let statusText = 'Starting…';
   let statusKind = '';
@@ -56,6 +57,7 @@ registerMiniapp((session: any) => {
         listening,
         provider,
         mode,
+        pace,
         lang,
         version: VERSION,
         hasKey: !!apiKey,
@@ -162,8 +164,17 @@ registerMiniapp((session: any) => {
       groqApiKey: provider === 'groq' ? apiKey : '',
       openaiApiKey: provider === 'openai' ? apiKey : '',
       lang,
+      fastMode: pace === 'fast',
+      slowMode: pace === 'slow',
       preferredSurah: 0,
     });
+    sendPace();
+  }
+
+  /** The backend keeps fast and slow as two independent flags. */
+  function sendPace() {
+    send({ type: 'set_fast_mode', enabled: pace === 'fast' });
+    send({ type: 'set_slow_mode', enabled: pace === 'slow' });
   }
 
   function connect() {
@@ -343,9 +354,31 @@ registerMiniapp((session: any) => {
     sendInit();   // re-init the pipeline with the new engine / mode / language
   });
 
-  session.ui.on('control', (c: any) => {
-    if (c?.action === 'toggle') {
-      if (listening) stopListening(); else startListening();
+  session.ui.on('control', async (c: any) => {
+    switch (c?.action) {
+      case 'toggle':
+        if (listening) stopListening(); else startListening();
+        break;
+      case 'pace':
+        pace = c.pace === 'fast' ? 'fast' : c.pace === 'slow' ? 'slow' : 'follow';
+        sendPace();
+        try { await session.storage.set('pace', pace); } catch {}
+        setStatus('Pace: ' + pace, 'ok');
+        pushStatus();
+        break;
+      case 'nudge':
+        // One-off multiplier on the display timer, not a mode change.
+        send({ type: 'pace_nudge', factor: Number(c.factor) || 1 });
+        setStatus((Number(c.factor) || 1) > 1 ? 'Nudged faster' : 'Nudged slower', 'ok');
+        break;
+      case 'manual_prev':
+      case 'manual_advance':
+      case 'reset':
+      case 'reset_rakat':
+        send({ type: c.action });
+        break;
+      default:
+        break;
     }
   });
 
@@ -355,9 +388,11 @@ registerMiniapp((session: any) => {
       const p = await session.storage.get('provider');
       const k = await session.storage.get('apiKey');
       const md = await session.storage.get('mode');
+      const pc = await session.storage.get('pace');
       const lg = await session.storage.get('lang');
       if (p === 'openai' || p === 'groq') provider = p;
       if (md === 'practice' || md === 'taraweeh') mode = md;
+      if (pc === 'fast' || pc === 'slow' || pc === 'follow') pace = pc;
       if (typeof lg === 'string') lang = lg;
       if (k) apiKey = k;
     } catch {}

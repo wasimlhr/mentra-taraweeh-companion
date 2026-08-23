@@ -132,6 +132,42 @@ input, select {
   </div>
 </div>
 
+<div class="s-section">Controls</div>
+<div class="s-card">
+  <div class="s-row">
+    <span class="s-label">Pace</span>
+    <div class="toggle-group" id="paces">
+      <button type="button" class="toggle-btn" data-pace="slow">Slow</button>
+      <button type="button" class="toggle-btn" data-pace="follow">Follow</button>
+      <button type="button" class="toggle-btn" data-pace="fast">Fast</button>
+    </div>
+    <span class="s-hint" id="paceHint" style="margin-top:6px"></span>
+  </div>
+  <div class="s-row">
+    <span class="s-label">Nudge the timer</span>
+    <div class="toggle-group">
+      <button type="button" class="btn-sm" data-nudge="0.85" style="flex:1">Slower</button>
+      <button type="button" class="btn-sm" data-nudge="1.18" style="flex:1">Faster</button>
+    </div>
+    <span class="s-hint" style="margin-top:6px">One-off adjustment when the display drifts from the reciter.</span>
+  </div>
+  <div class="s-row">
+    <span class="s-label">Ayah</span>
+    <div class="toggle-group">
+      <button type="button" class="btn-sm" data-act="manual_prev" style="flex:1">&larr; Previous</button>
+      <button type="button" class="btn-sm" data-act="manual_advance" style="flex:1">Next &rarr;</button>
+    </div>
+  </div>
+  <div class="s-row">
+    <span class="s-label">Reset</span>
+    <div class="toggle-group">
+      <button type="button" class="btn-sm" data-act="reset" style="flex:1">Search again</button>
+      <button type="button" class="btn-sm" data-act="reset_rakat" style="flex:1">Reset rakat</button>
+    </div>
+    <span class="s-hint" style="margin-top:6px">Search again drops the lock and hunts for the verse from scratch.</span>
+  </div>
+</div>
+
 <div class="s-section">Glasses</div>
 <div class="s-card">
   <div class="s-row">
@@ -159,10 +195,16 @@ window.onerror = function (msg, src, line) {
   var el = function (id) { return document.getElementById(id); };
   var provider = 'groq';
   var mode = 'taraweeh';
+  var pace = 'follow';
 
   var ENGINE = {
     groq:   { note: 'Fastest (~350ms) with word timings.', link: 'https://console.groq.com/keys', ph: 'gsk_… (Groq API key)' },
     openai: { note: 'Reliable and widely available (~450ms).', link: 'https://platform.openai.com/api-keys', ph: 'sk-… (OpenAI API key)' }
+  };
+  var PACE_NOTE = {
+    slow: 'Longer on each ayah — for a measured reciter.',
+    follow: 'Timer follows the reciter automatically.',
+    fast: 'Shorter on each ayah — for a quick reciter.'
   };
   var MODE_NOTE = {
     taraweeh: 'Follows the imam and auto-advances.',
@@ -180,6 +222,10 @@ window.onerror = function (msg, src, line) {
     el('getKey').href = ENGINE[provider].link;
     el('key').placeholder = ENGINE[provider].ph;
     el('modeHint').textContent = MODE_NOTE[mode];
+    [].forEach.call(document.querySelectorAll('#paces .toggle-btn'), function (b) {
+      b.classList.toggle('active', b.dataset.pace === pace);
+    });
+    el('paceHint').textContent = PACE_NOTE[pace];
   }
 
   function setStatus(text, kind) {
@@ -196,6 +242,16 @@ window.onerror = function (msg, src, line) {
     b.onclick = function () { mode = b.dataset.m; paint(); pushConfig(); };
   });
   el('lang').onchange = pushConfig;
+
+  [].forEach.call(document.querySelectorAll('#paces .toggle-btn'), function (b) {
+    b.onclick = function () { pace = b.dataset.pace; paint(); m.send('control', { action: 'pace', pace: pace }); };
+  });
+  [].forEach.call(document.querySelectorAll('[data-nudge]'), function (b) {
+    b.onclick = function () { m.send('control', { action: 'nudge', factor: parseFloat(b.dataset.nudge) }); };
+  });
+  [].forEach.call(document.querySelectorAll('[data-act]'), function (b) {
+    b.onclick = function () { m.send('control', { action: b.dataset.act }); };
+  });
 
   function pushConfig() {
     m.send('config', {
@@ -219,6 +275,7 @@ window.onerror = function (msg, src, line) {
   m.on('status', function (s) {
     if (s.provider) provider = s.provider;
     if (s.mode) mode = s.mode;
+    if (s.pace) pace = s.pace;
     if (typeof s.lang === 'string') el('lang').value = s.lang;
     if (s.hasKey && !el('key').value) el('key').placeholder = 'key saved — type to replace';
     if (s.version) el('ver').textContent = 'Taraweeh Companion · v' + s.version;
