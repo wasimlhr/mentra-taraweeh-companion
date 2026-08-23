@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "mentra-miniapp dev",
-    "build": "mentra-miniapp pack",
-    "release": "mentra-miniapp release"
+    "build": "bun build.ts",
+    "release": "mentra-miniapp release",
+    "pack": "mentra-miniapp pack"
   },
   "dependencies": {
     "@mentra/miniapp": "latest"
