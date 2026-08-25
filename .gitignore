@@ -3,6 +3,12 @@ dist/
 build/
 .env
 *.log
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
 .DS_Store
 dist/
 bun.lock

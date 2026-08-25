@@ -13,12 +13,20 @@
  * DOM, no Node built-ins.
  */
 import { registerMiniapp } from '@mentra/miniapp/background';
+import {
+  MAX_AUDIO_MESSAGES_PER_SECOND,
+  createFixedWindowLimiter,
+  isSecureBackendUrl,
+  parseServerMessage,
+  publicErrorText,
+  validAudioChunk,
+} from './protocol';
 
 /** Backend that runs the recognition engine. Same deployment the G2 app uses. */
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.1.0';
+const VERSION = '3.1.1';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -52,6 +60,17 @@ registerMiniapp((session: any) => {
   let verse: any = null;      // full ayah payload for the tile
   let match: any = null;      // live search progress for the tile
   let connected = false;
+  let protocolFailures = 0;
+  let allowAudioMessage = createFixedWindowLimiter(MAX_AUDIO_MESSAGES_PER_SECOND, 1000);
+
+  function protocolError(code: string, message: string) {
+    protocolFailures += 1;
+    console.log('[Taraweeh] protocol error:', code, message);
+    setStatus(message, 'err');
+    if (protocolFailures >= 3) {
+      try { ws && ws.close(1002, code); } catch {}
+    }
+  }
 
   // The tile is on-demand: it may not be open, and it may open long after the
   // background did. Push a full snapshot rather than deltas so whenever it
@@ -211,26 +230,35 @@ registerMiniapp((session: any) => {
 
   function connect() {
     if (ws || closing) return;
+    if (!isSecureBackendUrl(BACKEND)) {
+      protocolError('INSECURE_BACKEND_URL', 'Secure backend configuration required.');
+      show('Configuration problem', 'Hosted backends must use secure WebSocket transport.');
+      return;
+    }
+    let socket: any;
     try {
-      ws = new WebSocket(BACKEND);
+      socket = new WebSocket(BACKEND);
+      ws = socket;
     } catch (e) {
       scheduleReconnect();
       return;
     }
 
-    ws.onopen = () => {
+    socket.onopen = () => {
+      if (ws !== socket || closing) return;
       console.log('[Taraweeh] backend connected');
+      protocolFailures = 0;
       connected = true;
       setStatus(apiKey ? 'Connected' : 'Add an API key below', apiKey ? 'ok' : '');
       sendInit();
       if (listening) send({ type: 'start' });
     };
 
-    ws.onmessage = (ev: any) => {
-      let msg: any;
-      try {
-        msg = JSON.parse(typeof ev.data === 'string' ? ev.data : String(ev.data));
-      } catch {
+    socket.onmessage = (ev: any) => {
+      if (ws !== socket || closing) return;
+      const msg = parseServerMessage(ev.data);
+      if (!msg) {
+        protocolError('INVALID_SERVER_MESSAGE', 'The backend sent an invalid message.');
         return;
       }
       if (msg.type === 'state' && msg.state) {
@@ -239,27 +267,30 @@ registerMiniapp((session: any) => {
       } else if (msg.type === 'match_progress') {
         renderProgress(msg);
       } else if (msg.type === 'error') {
-        console.log('[Taraweeh] backend error:', msg.error);
-        show('Problem', String(msg.error || 'Backend error'));
+        console.log('[Taraweeh] backend error code:', typeof msg.code === 'string' ? msg.code : 'UNKNOWN');
+        show('Problem', publicErrorText(msg));
       } else if (msg.type === 'sys_status' && msg.component === 'model' && msg.status === 'error') {
         // Surface a bad or missing key rather than sitting on "Searching…".
         setStatus('Transcription error — check the key', 'err');
-        show('Check your API key', String(msg.message || 'Transcription failed'));
+        show('Check your API key', 'Transcription failed. Update the key in the phone tile.');
       }
     };
 
-    ws.onclose = () => {
+    socket.onclose = () => {
+      if (ws !== socket) return;
       ws = null;
       connected = false;
+      match = null;
       if (!closing) {
         setStatus('Reconnecting…', 'err');
         scheduleReconnect();
       }
     };
 
-    ws.onerror = () => {
-      // onclose follows and owns the reconnect.
+    socket.onerror = () => {
+      if (ws !== socket) return;
       console.log('[Taraweeh] socket error');
+      try { socket.close(); } catch {}
     };
   }
 
@@ -274,6 +305,7 @@ registerMiniapp((session: any) => {
   // ── Microphone ───────────────────────────────────────────────────────────
   function startAudio() {
     if (offAudio) return;
+    allowAudioMessage = createFixedWindowLimiter(MAX_AUDIO_MESSAGES_PER_SECOND, 1000);
     offAudio = session.mic.onAudioChunk((chunk: any) => {
       if (!listening) return;
 
@@ -288,6 +320,10 @@ registerMiniapp((session: any) => {
         }
         return;
       }
+      if (!validAudioChunk(chunk)) {
+        protocolError('INVALID_PCM', 'An invalid microphone frame was dropped.');
+        return;
+      }
       if (chunk.sampleRate && chunk.sampleRate !== EXPECTED_SAMPLE_RATE && !warnedRate) {
         warnedRate = true;
         console.log('[Taraweeh] mic sample rate is', chunk.sampleRate, 'expected', EXPECTED_SAMPLE_RATE);
@@ -295,7 +331,7 @@ registerMiniapp((session: any) => {
 
       // chunk.data is already base64 PCM, which is exactly the frame shape the
       // backend accepts — no decode, no binary frame needed.
-      if (ws && ws.readyState === 1 && chunk.data) {
+      if (ws && ws.readyState === 1 && allowAudioMessage()) {
         ws.send(JSON.stringify({ t: 'a', d: chunk.data }));
       }
     });
@@ -365,9 +401,15 @@ registerMiniapp((session: any) => {
 
   session.events?.onDisconnected?.(() => {
     closing = true;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
     stopAudio();
-    try { ws && ws.close(); } catch {}
+    const socket = ws;
     ws = null;
+    connected = false;
+    try { socket && socket.close(); } catch {}
   });
 
   // ── Tile (UI layer) ──────────────────────────────────────────────────────
@@ -400,6 +442,7 @@ registerMiniapp((session: any) => {
       console.log('[Taraweeh] could not persist config: ' + e);
     }
     setStatus(apiKey ? 'Settings saved' : 'Add an API key', apiKey ? 'ok' : '');
+    match = null;
     sendInit();   // re-init the pipeline with the new engine / mode / language
   });
 

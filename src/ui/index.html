@@ -452,15 +452,29 @@ window.onerror = function (msg, src, line) {
     el('sAudio').textContent = (s.audioSec || 0).toFixed(1) + 's';
     el('sWins').textContent = 'Lock ' + (s.wins || 0) + '/' + (s.winsRequired || 2);
     el('sHeard').textContent = s.heard || '';
-    el('sCands').innerHTML = (s.candidates || []).map(function (c, i) {
-      return '<div class="cand' + (i === 0 ? ' top' : '') + '">' +
-        '<span class="r">' + c.surah + ':' + c.ayah + '</span>' +
-        '<span class="a">' + (c.arabic || '') + '</span>' +
-        '<span class="s">' + c.score + '%</span></div>';
-    }).join('') || '<div class="cand"><span class="r" style="color:var(--tc-3)">listening…</span></div>';
-    var n = s.winsRequired || 2, w = '';
-    for (var i = 0; i < n; i++) w += '<span class="win' + (i < (s.wins || 0) ? ' on' : '') + '"></span>';
-    el('sWinBar').innerHTML = w;
+    var candRoot = el('sCands');
+    candRoot.textContent = '';
+    var candidates = (s.candidates || []).slice(0, 3);
+    if (!candidates.length) {
+      var empty = document.createElement('div'), listening = document.createElement('span');
+      empty.className = 'cand'; listening.className = 'r';
+      listening.style.color = 'var(--tc-3)'; listening.textContent = 'listening…';
+      empty.appendChild(listening); candRoot.appendChild(empty);
+    }
+    candidates.forEach(function (c, i) {
+      var row = document.createElement('div'); row.className = 'cand' + (i === 0 ? ' top' : '');
+      var ref = document.createElement('span'); ref.className = 'r'; ref.textContent = String(c.surah) + ':' + String(c.ayah);
+      var arabic = document.createElement('span'); arabic.className = 'a'; arabic.textContent = String(c.arabic || '');
+      var score = document.createElement('span'); score.className = 's'; score.textContent = String(c.score) + '%';
+      row.appendChild(ref); row.appendChild(arabic); row.appendChild(score); candRoot.appendChild(row);
+    });
+    var n = Math.max(1, Math.min(10, Number(s.winsRequired) || 2));
+    var winRoot = el('sWinBar'); winRoot.textContent = '';
+    for (var i = 0; i < n; i++) {
+      var win = document.createElement('span');
+      win.className = 'win' + (i < (Number(s.wins) || 0) ? ' on' : '');
+      winRoot.appendChild(win);
+    }
   }
 
   function pushConfig() {

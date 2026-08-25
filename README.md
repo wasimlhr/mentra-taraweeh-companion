@@ -55,9 +55,21 @@ glasses rather than being forwarded as noise.
 The backend is set by `BACKEND` in `src/background/index.ts`. It points at the
 shared deployment by default.
 
+Hosted backends must use `wss://` before the miniapp will send a BYOK key.
+Plain `ws://` is accepted only for loopback development (`localhost`,
+`127.0.0.1`, or `::1`). Local development does not use a reusable TLS private
+key; use loopback HTTP/WebSocket or generate an untracked, machine-local
+certificate. Hosted TLS should terminate at the deployment platform with a
+managed certificate. Private keys and certificates are ignored by Git.
+
 Transcription keys are read from miniapp settings (`provider`, `groqApiKey`,
 `openaiApiKey`, `lang`). Each user brings their own key — a shared pool hits
 rate limits.
+
+The miniapp never opts into a server-funded shared key. Authentication,
+principal quotas, duplicate-session ownership, provider deadlines, and global
+provider concurrency are enforced by the shared backend; this repository has
+no server process or shared recovery/session state of its own.
 
 ## Develop
 
