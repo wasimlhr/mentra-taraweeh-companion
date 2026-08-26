@@ -27,17 +27,55 @@ export function isSecureBackendUrl(value: string): boolean {
   return host === 'localhost' || host === '127.0.0.1' || host === '::1';
 }
 
-export function parseServerMessage(data: unknown): Record<string, any> | null {
-  if (typeof data !== 'string' || data.length > MAX_SERVER_MESSAGE_CHARS) return null;
-  try {
-    const value = JSON.parse(data);
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    if (typeof value.type !== 'string' || !ALLOWED_SERVER_TYPES.has(value.type)) return null;
-    if (value.type === 'state' && (!value.state || typeof value.state !== 'object' || Array.isArray(value.state))) return null;
-    return value;
-  } catch {
-    return null;
+// Minimal UTF-8 decoder: TextDecoder is a Web API and does not exist in the
+// bare background JS engine. Malformed sequences produce garbage characters,
+// which then fail JSON.parse and are rejected — good enough for this path.
+function decodeUtf8(bytes: Uint8Array): string {
+  let out = '';
+  let i = 0;
+  while (i < bytes.length) {
+    const b = bytes[i++];
+    let cp: number;
+    if (b < 0x80) cp = b;
+    else if ((b & 0xe0) === 0xc0) cp = ((b & 0x1f) << 6) | (bytes[i++] & 0x3f);
+    else if ((b & 0xf0) === 0xe0) cp = ((b & 0x0f) << 12) | ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f);
+    else cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3f) << 12) | ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f);
+    if (cp > 0xffff) {
+      cp -= 0x10000;
+      out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+    } else {
+      out += String.fromCharCode(cp);
+    }
   }
+  return out;
+}
+
+/**
+ * Native WebSocket bridges disagree about what onmessage receives for a text
+ * frame: a JSON string, bytes, or an already-parsed object. On-device the
+ * MentraOS bridge does not hand back a plain string, so a string-only parser
+ * rejected every backend message and the app looked permanently offline.
+ * Normalize all three shapes, then validate identically.
+ */
+export function parseServerMessage(data: unknown): Record<string, any> | null {
+  let value: any = data;
+  if (value instanceof ArrayBuffer) {
+    value = decodeUtf8(new Uint8Array(value));
+  } else if (ArrayBuffer.isView(value)) {
+    value = decodeUtf8(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+  }
+  if (typeof value === 'string') {
+    if (value.length > MAX_SERVER_MESSAGE_CHARS) return null;
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (typeof value.type !== 'string' || !ALLOWED_SERVER_TYPES.has(value.type)) return null;
+  if (value.type === 'state' && (!value.state || typeof value.state !== 'object' || Array.isArray(value.state))) return null;
+  return value;
 }
 
 export function validAudioChunk(chunk: unknown): chunk is { data: string; format?: unknown; sampleRate?: unknown } {

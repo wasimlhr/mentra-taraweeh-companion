@@ -26,7 +26,7 @@ import {
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.2.0';
+const VERSION = '3.2.1';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -61,6 +61,7 @@ registerMiniapp((session: any) => {
   let match: any = null;      // live search progress for the tile
   let connected = false;
   let protocolFailures = 0;
+  let loggedBadShape = false;
   let allowAudioMessage = createFixedWindowLimiter(MAX_AUDIO_MESSAGES_PER_SECOND, 1000);
 
   function protocolError(code: string, message: string) {
@@ -282,8 +283,20 @@ registerMiniapp((session: any) => {
 
     socket.onmessage = (ev: any) => {
       if (ws !== socket || closing) return;
-      const msg = parseServerMessage(ev.data);
+      // Bridges disagree about the callback argument: a DOM-style event with
+      // .data, or the payload itself. Unwrap before parsing.
+      const payload = ev && typeof ev === 'object' && 'data' in ev ? ev.data : ev;
+      const msg = parseServerMessage(payload);
       if (!msg) {
+        if (!loggedBadShape) {
+          loggedBadShape = true;
+          const desc = payload === null || payload === undefined
+            ? String(payload)
+            : typeof payload === 'object'
+              ? (payload.constructor?.name || 'object') + ' keys=' + Object.keys(payload).slice(0, 8).join(',')
+              : typeof payload + ' ' + String(payload).slice(0, 60);
+          console.log('[Taraweeh] unparseable server message; payload shape: ' + desc);
+        }
         protocolError('INVALID_SERVER_MESSAGE', 'The backend sent an invalid message.');
         return;
       }

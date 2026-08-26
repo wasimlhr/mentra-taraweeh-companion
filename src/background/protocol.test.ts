@@ -17,6 +17,25 @@ describe('secured backend protocol', () => {
     expect(parseServerMessage('not json')).toBeNull();
   });
 
+  test('normalizes the payload shapes native WebSocket bridges deliver', () => {
+    // Pre-parsed object (bridge already ran JSON.parse)
+    expect(parseServerMessage({ type: 'connected', sampleRate: 16000 })?.type).toBe('connected');
+    expect(parseServerMessage({ type: 'internal_secret' })).toBeNull();
+    expect(parseServerMessage([{ type: 'connected' }])).toBeNull();
+    // UTF-8 bytes for a text frame, including non-ASCII payload content
+    const json = '{"type":"match_progress","whisperText":"بسم الله"}';
+    const bytes = new Uint8Array([...json].flatMap((ch) => {
+      const cp = ch.codePointAt(0)!;
+      if (cp < 0x80) return [cp];
+      if (cp < 0x800) return [0xc0 | (cp >> 6), 0x80 | (cp & 0x3f)];
+      return [0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f)];
+    }));
+    expect(parseServerMessage(bytes)?.whisperText).toBe('بسم الله');
+    expect(parseServerMessage(bytes.buffer)?.type).toBe('match_progress');
+    expect(parseServerMessage(undefined)).toBeNull();
+    expect(parseServerMessage(null)).toBeNull();
+  });
+
   test('bounds and validates base64 audio before transport', () => {
     expect(validAudioChunk({ data: 'AAAAAA==' })).toBe(true);
     expect(validAudioChunk({ data: 'AA==' })).toBe(false);

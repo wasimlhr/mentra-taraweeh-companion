@@ -30,6 +30,16 @@ install QR for a release build. `bun run build` just produces the ZIP.
 The CLI is **Bun-only** — it ships as TypeScript and runs under Bun, so use
 `bun` / `bunx`, never `npx` or Node.
 
+**Windows live-reload quirk:** the CLI's file watcher compares paths with
+forward slashes, but Windows reports backslashes, so edits under
+`src/background/` broadcast a UI-only `reload` instead of `respawn-bg` (and
+`node_modules` churn is not filtered). Until fixed upstream, after
+`bun install` re-apply the one-line patch in
+`node_modules/@mentra/miniapp-cli/src/dev-server.ts`: normalize the watcher's
+`filename` with `.replace(/\\/g, "/")` before the comparisons. Also note
+`bun run release`/`pack` shell out to a system `zip` binary that Windows lacks
+— use `bun run pack:win` / `release:win`.
+
 ## What still needs hosting
 
 Only the recognition backend, and it is already deployed — the same one the

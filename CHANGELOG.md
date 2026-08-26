@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.2.1 - 2026-08-26
+
+- **Backend messages are actually read on-device.** The phone's native
+  WebSocket bridge does not hand `onmessage` a DOM-style event with a string
+  `.data` — the string-only parser therefore rejected every backend message
+  as `INVALID_SERVER_MESSAGE`, tripped the 3-failure disconnect, and the app
+  cycled connect → reject → close forever, showing "Offline" in the tile
+  (confirmed via the dev sidecar's live device logs). `parseServerMessage`
+  now normalizes all bridge shapes — a JSON string, a pre-parsed object, or
+  UTF-8 bytes (with a local decoder; `TextDecoder` does not exist in the bare
+  engine) — and `onmessage` unwraps event-or-payload. A one-time diagnostic
+  logs the payload shape if parsing ever fails again.
+
 ## 3.2.0 - 2026-08-25
 
 - **The app can now actually connect on-device.** `isSecureBackendUrl` used
