@@ -1,10 +1,6 @@
 const MAX_SERVER_MESSAGE_CHARS = 256 * 1024;
 const MAX_AUDIO_BYTES = 64 * 1024;
 export const MAX_AUDIO_MESSAGES_PER_SECOND = 100;
-const ALLOWED_SERVER_TYPES = new Set([
-  'connected', 'backend_version', 'pipeline_version', 'pace', 'sys_status',
-  'match_progress', 'recovery_state', 'state', 'error', 'pong',
-]);
 
 // No `new URL()` here: the background layer is a bare JS engine
 // (JavaScriptCore / QuickJS) where the WHATWG URL constructor does not exist.
@@ -73,7 +69,13 @@ export function parseServerMessage(data: unknown): Record<string, any> | null {
     }
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  if (typeof value.type !== 'string' || !ALLOWED_SERVER_TYPES.has(value.type)) return null;
+  if (typeof value.type !== 'string') return null;
+  // No type allowlist: the shared backend evolves ahead of installed clients
+  // and emits kinds this build has no handler for (audio_profile, quota, …).
+  // An allowlist here turned every one of those into a "protocol error", and
+  // three of them closed a healthy connection — the app looked permanently
+  // offline. Structure is validated; unknown types are for the caller to
+  // ignore, exactly as the G2 app does.
   if (value.type === 'state' && (!value.state || typeof value.state !== 'object' || Array.isArray(value.state))) return null;
   return value;
 }

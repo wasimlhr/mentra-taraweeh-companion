@@ -10,35 +10,42 @@ Mentra console, publishing to the Mentra Store — belonged to the cloud SDK and
 **no longer applies**. Miniapps run on the phone. There is no server of ours to
 host and no Public URL to register.
 
-Mentra 3.0 also shipped **without the Miniapp Store**: only official Mentra
-miniapps are preinstalled, and the store is due back later in 2026. So there is
-currently no public publishing path for a third-party miniapp.
+## The three official install routes (docs.mentraglass.com → Distribution)
 
-## Install it on your glasses (the only route today)
+1. **`bun run dev`** — hot-reload development. **Not an installation**: the
+   docs are explicit that the computer and CLI must keep running to serve the
+   runtime bundle. Scan the QR from **Settings → Developer settings → Scan
+   Mini App QR Code**; phone and computer on the same network.
+2. **`bun run release`** — the persistent install. Packs a release build and
+   serves a `miniapp://release` QR on port 6789; after one scan **the miniapp
+   installs on the phone, runs offline, and survives restarts — no laptop
+   needed again** until you want to ship a new version (bump `version` in
+   `miniapp.json`, re-run, re-scan).
+3. **`bun run pack:win`** — produces `build/<pkg>-<version>.zip` for
+   submission through the Mentra **Developer Console** (the public store
+   path).
 
-1. `bun install`
-2. `bun run dev` — validates the manifest, builds both layers, serves over your
-   LAN and prints a QR code.
-3. In the Mentra app: **Settings → Miniapp Developer Settings → Scan Miniapp QR
-   Code**.
-
-Phone and computer must be on the same network.
-
-`bun run release` does the same but validates, builds, packs and serves an
-install QR for a release build. `bun run build` just produces the ZIP.
+On Windows with a *Public* Wi-Fi profile, allow the serving ports through the
+firewall first (dev uses 3002-3003, release uses 6789), or install over
+Tailscale.
 
 The CLI is **Bun-only** — it ships as TypeScript and runs under Bun, so use
 `bun` / `bunx`, never `npx` or Node.
 
-**Windows live-reload quirk:** the CLI's file watcher compares paths with
-forward slashes, but Windows reports backslashes, so edits under
-`src/background/` broadcast a UI-only `reload` instead of `respawn-bg` (and
-`node_modules` churn is not filtered). Until fixed upstream, after
-`bun install` re-apply the one-line patch in
-`node_modules/@mentra/miniapp-cli/src/dev-server.ts`: normalize the watcher's
-`filename` with `.replace(/\\/g, "/")` before the comparisons. Also note
-`bun run release`/`pack` shell out to a system `zip` binary that Windows lacks
-— use `bun run pack:win` / `release:win`.
+**Windows CLI quirks (re-apply both patches after any `bun install`, until
+fixed upstream):**
+
+- The CLI's file watcher compares paths with forward slashes, but Windows
+  reports backslashes, so edits under `src/background/` broadcast a UI-only
+  `reload` instead of `respawn-bg` (and `node_modules` churn is not
+  filtered). Patch `node_modules/@mentra/miniapp-cli/src/dev-server.ts`:
+  normalize the watcher's `filename` with `.replace(/\\/g, "/")` before the
+  comparisons.
+- The CLI's `pack` (used by `release` too) spawns a system `zip` binary that
+  Windows does not ship. Patch `node_modules/@mentra/miniapp-cli/src/pack.ts`
+  to zip in-process with JSZip (the CLI already depends on it — dev-server
+  builds its bundle.zip with it). `scripts/pack-win.ts` remains the
+  patch-free fallback for producing the store ZIP.
 
 ## What still needs hosting
 

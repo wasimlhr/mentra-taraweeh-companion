@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.2.2 - 2026-08-26
+
+- **Unknown backend message kinds are ignored, not fatal.** The hardened
+  parser allowlisted ten message types, but the shared backend emits kinds
+  this client has no handler for (`audio_profile`, quota notices, …); each
+  one counted as a protocol error and three of them closed a healthy
+  connection — the 3.2.1 shape diagnostic caught `audio_profile` as the
+  very first message after connect. The parser still rejects malformed
+  input (non-JSON, no `type`, oversized, bad `state` shape), but unknown
+  types now pass through to the handler, which ignores what it does not
+  know — the same forward-compatibility rule the G2 app follows, because
+  the backend deploys ahead of installed clients by design.
+
 ## 3.2.1 - 2026-08-26
 
 - **Backend messages are actually read on-device.** The phone's native

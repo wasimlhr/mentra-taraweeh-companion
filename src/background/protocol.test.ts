@@ -10,17 +10,22 @@ describe('secured backend protocol', () => {
     expect(isSecureBackendUrl('wss://example.test/other')).toBe(false);
   });
 
-  test('accepts known structured messages and rejects malformed or unknown input', () => {
+  test('accepts structured messages and rejects only malformed input', () => {
     expect(parseServerMessage('{"type":"match_progress","whisperText":"heard"}')?.type).toBe('match_progress');
     expect(parseServerMessage('{"type":"state","state":null}')).toBeNull();
-    expect(parseServerMessage('{"type":"internal_secret"}')).toBeNull();
     expect(parseServerMessage('not json')).toBeNull();
+    expect(parseServerMessage('{"noType":true}')).toBeNull();
+    expect(parseServerMessage('{"type":42}')).toBeNull();
+    // Types this build has no handler for still parse — the backend runs
+    // ahead of installed clients, and unknown kinds are ignored, not fatal.
+    expect(parseServerMessage('{"type":"audio_profile","component":"audio","status":"ready"}')?.type).toBe('audio_profile');
+    expect(parseServerMessage('{"type":"future_kind"}')?.type).toBe('future_kind');
   });
 
   test('normalizes the payload shapes native WebSocket bridges deliver', () => {
     // Pre-parsed object (bridge already ran JSON.parse)
     expect(parseServerMessage({ type: 'connected', sampleRate: 16000 })?.type).toBe('connected');
-    expect(parseServerMessage({ type: 'internal_secret' })).toBeNull();
+    expect(parseServerMessage({ notype: true })).toBeNull();
     expect(parseServerMessage([{ type: 'connected' }])).toBeNull();
     // UTF-8 bytes for a text frame, including non-ASCII payload content
     const json = '{"type":"match_progress","whisperText":"بسم الله"}';
