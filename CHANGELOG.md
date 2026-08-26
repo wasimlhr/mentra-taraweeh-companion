@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.2.0 - 2026-08-25
+
+- **The app can now actually connect on-device.** `isSecureBackendUrl` used
+  `new URL()` — a WHATWG API that does not exist in the bare background JS
+  engine (JavaScriptCore/QuickJS). On glasses it threw, the catch returned
+  false, and the app declared its own hard-coded `wss://` backend "insecure"
+  and died with no retry, while every Bun/browser test passed. The check now
+  parses with regexes.
+- **Session teardown runs.** Cleanup was registered on
+  `session.events.onDisconnected`, which is not an SDK API — the optional
+  chaining made it a silent no-op, so the mic subscription, reconnect timer
+  and backend socket all outlived the session. Now registered on
+  `onBeforeDisconnect` and `on('disconnect')`, the real hooks.
+- **A half-typed key can no longer clobber the saved one.** Every settings tap
+  pushed the key input's current text; the background adopted any non-empty
+  value. The key now travels only on an explicit Save.
+- The protocol-failure disconnect uses close code 4002 (1002 is reserved and
+  `close()` throws on it — the socket never actually closed), and invalid mic
+  frames no longer count toward tearing down a healthy backend connection.
+- Stale "Locked · N%" pill and ayah card are cleared when the engine returns
+  to searching (reset, lost lock).
+- The verse progress bar restarts when the ayah changes, not only when the
+  duration differs — equal-length consecutive ayahs froze it at 100%.
+- Config restore runs its storage reads in parallel, shrinking the window
+  where an early tap wrongly reported "API key needed".
+- Isti'adhah / bismillah are named when heard — the search card and the
+  glasses show *A'udhu billah ✓* / *Bismillah ✓* instead of a generic
+  "Searching…" (requires backend ≥ 3.2.0; older backends simply keep the raw
+  heard line).
+- A basmala lock shows **"Bismillah"**, not "Al-Fatihah 1:1 of 7", on the tile
+  and the glasses — 1:1 locks whenever a reciter opens any surah.
+
 ## 3.0.6 - 2026-08-23
 
 Rewritten as a **thin `@mentra/miniapp` client** on the shared backend.

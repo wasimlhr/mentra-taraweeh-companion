@@ -424,33 +424,41 @@ window.onerror = function (msg, src, line) {
     if (p < 1) raf = requestAnimationFrame(tick);
   }
 
+  var lastVerseKey = '';
   function showVerse(v) {
     if (!v) {
       el('verseBody').style.display = 'none';
       el('verseEmpty').style.display = '';
-      el('vBar').style.width = '0'; timerMs = 0;
+      el('vBar').style.width = '0'; timerMs = 0; lastVerseKey = '';
       return;
     }
     el('verseEmpty').style.display = 'none';
     el('verseBody').style.display = '';
-    el('vName').textContent = v.surahName || 'Quran';
-    el('vRef').textContent = v.surah + ':' + v.ayah + (v.ayahTotal ? ' of ' + v.ayahTotal : '');
+    // The basmala lock is not "Al-Fatihah 1:1 of 7" — it opens every surah.
+    el('vName').textContent = v.basmala ? 'Bismillah' : (v.surahName || 'Quran');
+    el('vRef').textContent = v.basmala ? '' : v.surah + ':' + v.ayah + (v.ayahTotal ? ' of ' + v.ayahTotal : '');
     el('vConf').textContent = v.confidence ? v.confidence + '%' : '';
     el('vAr').textContent = v.arabic || '';
     el('vTl').textContent = v.transliteration || '';
     el('vTr').textContent = v.translation || '';
-    if (v.timerMs && v.timerMs !== timerMs) {
+    // Restart the bar when the ayah changes too — two consecutive ayahs with
+    // an equal duration used to leave the bar frozen at 100%.
+    var verseKey = v.surah + ':' + v.ayah;
+    if (v.timerMs && (v.timerMs !== timerMs || verseKey !== lastVerseKey)) {
       timerMs = v.timerMs; timerStart = Date.now();
       if (raf) cancelAnimationFrame(raf);
       tick();
     }
+    lastVerseKey = verseKey;
   }
 
   function showSearch(s) {
     if (!s) { el('searchCard').style.display = 'none'; return; }
     el('searchCard').style.display = '';
     el('sAudio').textContent = (s.audioSec || 0).toFixed(1) + 's';
-    el('sWins').textContent = 'Lock ' + (s.wins || 0) + '/' + (s.winsRequired || 2);
+    el('sWins').textContent = s.preamble
+      ? (s.preamble === 'istiadhah' ? "A'udhu billah ✓" : 'Bismillah ✓')
+      : 'Lock ' + (s.wins || 0) + '/' + (s.winsRequired || 2);
     el('sHeard').textContent = s.heard || '';
     var candRoot = el('sCands');
     candRoot.textContent = '';
@@ -477,13 +485,18 @@ window.onerror = function (msg, src, line) {
     }
   }
 
-  function pushConfig() {
-    m.send('config', {
+  // The key travels ONLY on an explicit Save. Every settings tap calls this,
+  // and carrying the key field each time meant a half-typed key silently
+  // replaced the stored working one the moment any other control was touched.
+  function pushConfig(includeKey) {
+    var payload = {
       provider: provider, mode: mode, lang: el('lang').value,
       surah: parseInt(el('surah').value, 10) || 0,
-      onlySurah: !!only,
-      apiKey: el('key').value.trim()
-    });
+      onlySurah: !!only
+    };
+    var typed = el('key').value.trim();
+    if (includeKey && typed) payload.apiKey = typed;
+    m.send('config', payload);
   }
   [].forEach.call(document.querySelectorAll('#provs .btn'), function (b) {
     b.onclick = function () { provider = b.dataset.p; paint(); pushConfig(); }; });
@@ -501,7 +514,7 @@ window.onerror = function (msg, src, line) {
     b.onclick = function () { only = parseInt(b.dataset.only, 10); paint(); pushConfig(); };
   });
   el('save').onclick = function () {
-    pushConfig();
+    pushConfig(true);
     el('saveHint').textContent = 'Saved';
     setTimeout(function () { el('saveHint').textContent = ''; }, 1500);
   };

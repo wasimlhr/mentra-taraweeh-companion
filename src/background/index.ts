@@ -26,7 +26,7 @@ import {
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.1.1';
+const VERSION = '3.2.0';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -68,7 +68,9 @@ registerMiniapp((session: any) => {
     console.log('[Taraweeh] protocol error:', code, message);
     setStatus(message, 'err');
     if (protocolFailures >= 3) {
-      try { ws && ws.close(1002, code); } catch {}
+      // 4002, not 1002: close() only accepts 1000 or 3000-4999 — a reserved
+      // code throws, the catch swallowed it, and the socket never closed.
+      try { ws && ws.close(4002, code); } catch {}
     }
   }
 
@@ -150,17 +152,26 @@ registerMiniapp((session: any) => {
   // ── Verse rendering ──────────────────────────────────────────────────────
   // Field names mirror the backend's `state` message, the same payload the G2
   // app renders, so both platforms show the same thing.
+  // 1:1 IS the basmala and locks whenever a reciter opens any surah with
+  // "بسم الله الرحمن الرحيم" — branding that "Al-Fatihah 1:1" reads wrong, so
+  // every surface shows it as plain "Bismillah" instead.
+  function isBasmalaPos(state: any): boolean {
+    return Number(state?.surah) === 1 && Number(state?.ayah) === 1;
+  }
+
   function renderState(state: any) {
     const translation = state.translationGlasses ?? state.translation ?? '';
     const translit = state.transliteration ?? '';
-    const name = state.surahName || 'Quran';
+    const basmala = isBasmalaPos(state);
+    const name = basmala ? 'Bismillah' : (state.surahName || 'Quran');
 
     if (state.mode === 'LOCKED' || state.mode === 'PAUSED' || state.mode === 'RESUMING') {
       const pct = Math.round((state.confidence || 0) * 100);
-      const ref = name + ' ' + state.surah + ':' + state.ayah;
+      const ref = basmala ? 'Bismillah' : name + ' ' + state.surah + ':' + state.ayah;
       lastVerse = ref + ' — ' + translation;
       verse = {
         surah: state.surah, ayah: state.ayah, surahName: name,
+        basmala,
         ayahTotal: state.ayahTotal, arabic: state.arabic || '',
         transliteration: translit, translation,
         confidence: pct, timerMs: state.timerMs || 0, mode: state.mode,
@@ -171,9 +182,18 @@ registerMiniapp((session: any) => {
       return;
     }
 
+    // Not displayable any more: a previously shown lock is stale. Without this
+    // the tile kept "Locked · N%" and the old ayah card after a reset or a
+    // lost lock until the next lock happened to replace them.
+    if (verse) {
+      verse = null;
+      lastVerse = '';
+      if (listening) { statusText = 'Searching…'; statusKind = ''; }
+    }
+
     // Still searching, but a candidate is forming — show it without implying a lock.
     if (state.isCandidate && translation) {
-      const ref = name + ' ' + state.surah + ':' + state.ayah;
+      const ref = basmala ? 'Bismillah' : name + ' ' + state.surah + ':' + state.ayah;
       show(ref + '   ' + (state.candidateScore || 0) + '%', translation + '\n\nMatching…');
       return;
     }
@@ -185,11 +205,17 @@ registerMiniapp((session: any) => {
     match = {
       audioSec: msg.audioSec || 0,
       heard: msg.whisperText || '',
+      preamble: msg.preamble === 'istiadhah' || msg.preamble === 'bismillah' ? msg.preamble : '',
       candidates: (msg.candidates || []).slice(0, 3),
       wins: msg.lockProgress?.wins || 0,
       winsRequired: msg.lockProgress?.winsRequired || 2,
       coverage: msg.lockProgress?.coverage || 0,
     };
+    // Name the recognized opening on the glasses too — the reciter hears
+    // themselves acknowledged instead of a generic "Searching…".
+    if (match.preamble && listening && !verse) {
+      show('Listening…', match.preamble === 'istiadhah' ? "A'udhu billah ✓" : 'Bismillah ✓');
+    }
     pushStatus();
   }
 
@@ -321,7 +347,10 @@ registerMiniapp((session: any) => {
         return;
       }
       if (!validAudioChunk(chunk)) {
-        protocolError('INVALID_PCM', 'An invalid microphone frame was dropped.');
+        // A bad MIC frame is a host-side problem — it must not count toward
+        // the backend protocol-failure counter, or three bad frames would
+        // tear down a perfectly healthy backend connection.
+        console.log('[Taraweeh] invalid microphone frame dropped');
         return;
       }
       if (chunk.sampleRate && chunk.sampleRate !== EXPECTED_SAMPLE_RATE && !warnedRate) {
@@ -399,7 +428,13 @@ registerMiniapp((session: any) => {
     if (press?.pressType === 'long') stopListening();
   });
 
-  session.events?.onDisconnected?.(() => {
+  // `session.on('disconnect')` / `onBeforeDisconnect` are the real SDK hooks.
+  // The previous `session.events?.onDisconnected?.()` matched nothing and the
+  // optional chaining made it a silent no-op — none of this cleanup ever ran,
+  // so the mic kept streaming and the reconnect loop kept re-arming after the
+  // session ended.
+  function teardown() {
+    if (closing) return;
     closing = true;
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -410,7 +445,9 @@ registerMiniapp((session: any) => {
     ws = null;
     connected = false;
     try { socket && socket.close(); } catch {}
-  });
+  }
+  try { session.onBeforeDisconnect?.(teardown); } catch {}
+  try { session.on?.('disconnect', teardown); } catch {}
 
   // ── Tile (UI layer) ──────────────────────────────────────────────────────
   session.ui.on('hello', () => pushStatus());
@@ -474,16 +511,20 @@ registerMiniapp((session: any) => {
     }
   });
 
-  // Restore config before the first connect so init carries the key.
+  // Restore config before the first connect so init carries the key. The gets
+  // run in parallel: seven sequential bridge round-trips left a window where a
+  // temple tap saw no key yet and wrongly reported "API key needed".
   (async () => {
     try {
-      const p = await session.storage.get('provider');
-      const k = await session.storage.get('apiKey');
-      const md = await session.storage.get('mode');
-      const pc = await session.storage.get('pace');
-      const lg = await session.storage.get('lang');
-      const sr = await session.storage.get('surah');
-      const os = await session.storage.get('onlySurah');
+      const [p, k, md, pc, lg, sr, os] = await Promise.all([
+        session.storage.get('provider'),
+        session.storage.get('apiKey'),
+        session.storage.get('mode'),
+        session.storage.get('pace'),
+        session.storage.get('lang'),
+        session.storage.get('surah'),
+        session.storage.get('onlySurah'),
+      ]);
       if (p === 'openai' || p === 'groq') provider = p;
       if (md === 'practice' || md === 'taraweeh') mode = md;
       if (pc === 'fast' || pc === 'slow' || pc === 'follow') pace = pc;

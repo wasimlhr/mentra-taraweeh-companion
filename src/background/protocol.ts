@@ -6,16 +6,25 @@ const ALLOWED_SERVER_TYPES = new Set([
   'match_progress', 'recovery_state', 'state', 'error', 'pong',
 ]);
 
+// No `new URL()` here: the background layer is a bare JS engine
+// (JavaScriptCore / QuickJS) where the WHATWG URL constructor does not exist.
+// Using it threw a ReferenceError, the catch returned false, and the app
+// declared its own hard-coded wss:// backend "insecure" — permanently dead on
+// device while every Bun/browser test passed. Parse with regexes instead.
 export function isSecureBackendUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
-    const loopback = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-    return !url.username && !url.password && url.pathname === '/ws'
-      && (url.protocol === 'wss:' || (url.protocol === 'ws:' && loopback));
-  } catch {
-    return false;
-  }
+  if (typeof value !== 'string') return false;
+  // scheme://authority/ws — authority may not contain credentials (@), a path,
+  // query, fragment, or backslash trickery.
+  const m = value.match(/^(wss?):\/\/([^/\\?#@]+)\/ws$/i);
+  if (!m) return false;
+  const authority = m[2];
+  // host[:port] with an optional bracketed IPv6 literal
+  const hp = authority.match(/^(\[[0-9A-Fa-f:.]+\]|[^:\[\]]+)(?::(\d{1,5}))?$/);
+  if (!hp) return false;
+  const host = hp[1].toLowerCase().replace(/^\[|\]$/g, '');
+  if (m[1].toLowerCase() === 'wss') return true;
+  // Plain ws:// is development-only, toward loopback.
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
 }
 
 export function parseServerMessage(data: unknown): Record<string, any> | null {
