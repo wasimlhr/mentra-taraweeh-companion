@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.3.0 - 2026-08-26
+
+- **Karaoke word tracking in the tile's Arabic text.** Recited words render
+  at full strength, the current word glows gold, upcoming words sit dimmed.
+  No new recognition and no new cost: once locked the text is known, so this
+  is alignment — the shared backend interpolates the word position from its
+  measured pace and snap-corrects from Whisper word timestamps, streaming
+  `wordProgress` at 5 Hz. The background forwards only changed positions to
+  the tile; spans are built once per ayah and only the highlight moves.
+  Candidates stay plain — the highlight must not imply certainty that does
+  not exist yet. (Matches the G2 app's 3.3.0.)
+
 ## 3.2.2 - 2026-08-26
 
 - **Unknown backend message kinds are ignored, not fatal.** The hardened

@@ -66,6 +66,11 @@ body {
 .verse .ref b { font-size:14px; color:var(--tc-1); font-weight:600; }
 .verse .conf { margin-left:auto; color:var(--tc-green); font-variant-numeric:tabular-nums; }
 .ar { font-family:var(--font-ar); direction:rtl; text-align:right; font-size:25px; line-height:2; margin-bottom:14px; }
+/* Karaoke word tracking: recited words full strength, current word gold,
+   upcoming words dimmed. Driven by the backend's 5 Hz wordProgress stream. */
+.ar .k-word { opacity:.45; transition:opacity .25s ease, color .25s ease; }
+.ar .k-word.done { opacity:.9; }
+.ar .k-word.now { opacity:1; color:var(--tc-gold); }
 .tl { font-size:13px; color:var(--tc-2); font-style:italic; margin-bottom:10px; }
 .tr { font-size:15px; line-height:1.55; }
 .bar { position:absolute; left:0; bottom:0; height:2px; background:var(--bc-accent); width:0; }
@@ -425,6 +430,43 @@ window.onerror = function (msg, src, line) {
   }
 
   var lastVerseKey = '';
+  var kCount = 0, kIdx = -1;
+  // Karaoke rendering of the Arabic line: spans are built once per ayah, then
+  // only the highlight index moves. Corpus word count can differ from the
+  // display text's tokenization, so the index maps fractionally.
+  function renderAr(v, verseKey) {
+    var ar = el('vAr');
+    var karaoke = v.mode === 'LOCKED' && v.totalWords > 0 && v.arabic;
+    if (!karaoke) {
+      if (ar.dataset.k !== 'p' + verseKey) {
+        ar.textContent = v.arabic || '';
+        ar.dataset.k = 'p' + verseKey; kCount = 0; kIdx = -1;
+      }
+      return;
+    }
+    if (ar.dataset.k !== verseKey) {
+      ar.textContent = '';
+      var ws = String(v.arabic).split(/\s+/).filter(Boolean);
+      for (var i = 0; i < ws.length; i++) {
+        var s = document.createElement('span');
+        s.className = 'k-word'; s.textContent = ws[i];
+        ar.appendChild(s);
+        if (i < ws.length - 1) ar.appendChild(document.createTextNode(' '));
+      }
+      ar.dataset.k = verseKey; kCount = ws.length; kIdx = -1;
+    }
+    var idx = v.totalWords === kCount
+      ? v.wordIndex
+      : Math.floor((v.wordIndex / Math.max(1, v.totalWords)) * kCount);
+    idx = Math.max(0, Math.min(idx, kCount - 1));
+    if (idx === kIdx) return;
+    var sp = ar.querySelectorAll('.k-word');
+    for (var j = 0; j < sp.length; j++) {
+      sp[j].className = 'k-word' + (j < idx ? ' done' : j === idx ? ' now' : '');
+    }
+    kIdx = idx;
+  }
+
   function showVerse(v) {
     if (!v) {
       el('verseBody').style.display = 'none';
@@ -438,7 +480,7 @@ window.onerror = function (msg, src, line) {
     el('vName').textContent = v.basmala ? 'Bismillah' : (v.surahName || 'Quran');
     el('vRef').textContent = v.basmala ? '' : v.surah + ':' + v.ayah + (v.ayahTotal ? ' of ' + v.ayahTotal : '');
     el('vConf').textContent = v.confidence ? v.confidence + '%' : '';
-    el('vAr').textContent = v.arabic || '';
+    renderAr(v, v.surah + ':' + v.ayah);
     el('vTl').textContent = v.transliteration || '';
     el('vTr').textContent = v.translation || '';
     // Restart the bar when the ayah changes too — two consecutive ayahs with

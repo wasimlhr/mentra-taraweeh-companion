@@ -26,7 +26,7 @@ import {
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.2.2';
+const VERSION = '3.3.0';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -176,6 +176,10 @@ registerMiniapp((session: any) => {
         ayahTotal: state.ayahTotal, arabic: state.arabic || '',
         transliteration: translit, translation,
         confidence: pct, timerMs: state.timerMs || 0, mode: state.mode,
+        // Karaoke position — seeds the tile's word highlight at lock time;
+        // the 5 Hz wordProgress stream keeps it moving afterwards.
+        totalWords: typeof state.totalWords === 'number' ? state.totalWords : 0,
+        wordIndex: typeof state.wordIndex === 'number' ? state.wordIndex : 0,
       };
       match = null;
       setStatus('Locked · ' + pct + '%', 'ok');
@@ -305,6 +309,16 @@ registerMiniapp((session: any) => {
         pushStatus();
       } else if (msg.type === 'match_progress') {
         renderProgress(msg);
+      } else if (msg.type === 'wordProgress') {
+        // 5 Hz karaoke position for the tile's word highlight. Forward only
+        // actual changes — identical indexes are not worth a bridge snapshot.
+        if (verse && verse.surah === msg.surah && verse.ayah === msg.ayah
+            && typeof msg.wordIndex === 'number' && msg.totalWords > 0
+            && (verse.wordIndex !== msg.wordIndex || verse.totalWords !== msg.totalWords)) {
+          verse.wordIndex = msg.wordIndex;
+          verse.totalWords = msg.totalWords;
+          pushStatus();
+        }
       } else if (msg.type === 'error') {
         console.log('[Taraweeh] backend error code:', typeof msg.code === 'string' ? msg.code : 'UNKNOWN');
         show('Problem', publicErrorText(msg));
