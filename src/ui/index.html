@@ -497,8 +497,19 @@ window.onerror = function (msg, src, line) {
     kIdx = idx;
   }
 
+  // Remember the bar fill of the ayah we just left. A surah-complete flash or
+  // a back-correct can clear/flip the verse and re-show the SAME ayah moments
+  // later — restarting its bar from zero read as "the timer reset twice".
+  var barMemo = { key: '', frac: 0, at: 0 };
+  function memoBar() {
+    if (lastVerseKey && timerMs) {
+      barMemo = { key: lastVerseKey, frac: barFraction(), at: Date.now() };
+    }
+  }
+
   function showVerse(v) {
     if (!v) {
+      memoBar();
       el('verseBody').style.display = 'none';
       el('verseEmpty').style.display = '';
       el('vBar').style.width = '0'; timerMs = 0; barBase = 0; lastVerseKey = '';
@@ -517,8 +528,13 @@ window.onerror = function (msg, src, line) {
     var verseKey = v.surah + ':' + v.ayah;
     if (v.timerMs) {
       if (verseKey !== lastVerseKey) {
-        // New ayah — fresh sweep from empty.
-        startBar(v.timerMs, 0);
+        memoBar();
+        // New ayah — fresh sweep from empty; but if this exact ayah was on
+        // screen moments ago (completion flash, back-correct ping-pong),
+        // continue from where its bar stood instead of restarting.
+        var resumeFrac = (barMemo.key === verseKey && Date.now() - barMemo.at < 6000)
+          ? barMemo.frac : 0;
+        startBar(v.timerMs, resumeFrac);
       } else {
         // Same ayah: re-sync only when the backend's remaining genuinely
         // disagrees with the running animation (re-phase, pace nudge), and

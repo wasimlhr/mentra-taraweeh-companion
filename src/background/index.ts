@@ -26,7 +26,7 @@ import {
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.3.2';
+const VERSION = '3.3.3';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;

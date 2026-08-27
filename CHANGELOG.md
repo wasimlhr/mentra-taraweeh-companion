@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.3.3 - 2026-08-26
+
+- **A re-shown ayah continues its timer bar instead of restarting.** A
+  surah-complete flash or a back-correct clears/flips the verse and can
+  re-show the SAME ayah moments later — the last ayah of a surah visibly
+  "reset twice". The tile now remembers the bar fill of the ayah it just
+  left (6 s window) and continues from there when that exact ayah returns;
+  a genuinely new ayah still gets its single fresh sweep. Verified in the
+  bridge-shim harness: 33% before the flash → continues at 40% after the
+  re-lock → clean reset only on the next ayah. (Pairs with the backend's
+  3.3.3 word-clock fix, which stops new ayahs appearing mid-word.)
+
 ## 3.3.2 - 2026-08-26
 
 - **The ayah timer bar sweeps once per ayah again.** The bar restarted its
