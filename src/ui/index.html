@@ -432,20 +432,24 @@ window.onerror = function (msg, src, line) {
   if (!m) { el('tSvc').textContent = 'Not in MentraOS'; paint(); return; }
 
   // Animate the ayah timer locally: the backend pushes a remaining duration,
-  // not ticks. The bar CONTINUES from its current fill (barBase) toward 100%
-  // over that remaining time — restarting the fraction from zero on every
-  // 500ms state heartbeat made the bar pulse in tiny fills, roughly once per
-  // word at normal pace, instead of sweeping the ayah once. An interval, not
-  // requestAnimationFrame: rAF starves in backgrounded/dimmed WebViews.
-  function barFraction() {
-    if (!timerMs) return 0;
-    return Math.min(1, barBase + (1 - barBase) * ((Date.now() - timerStart) / timerMs));
-  }
+  // not ticks. The bar CONTINUES from its current fill toward 100% over that
+  // remaining time — restarting the fraction from zero on every 500ms state
+  // heartbeat made the bar pulse in tiny fills instead of sweeping the ayah
+  // once. An interval, not requestAnimationFrame: rAF starves in dimmed
+  // WebViews.
+  //
+  // barKey is which ayah the RUNNING bar belongs to; barFill is the current
+  // visual fill. They are the source of truth — the backend emits a new
+  // ayah's first state BEFORE arming its timer, so `lastVerseKey` alone made
+  // the fresh timer land in the "same ayah" branch seeded with the previous
+  // ayah's completed fill, pinning every bar after the first auto-advance at
+  // ~100%.
+  var barKey = '', barFill = 0;
   function tick() {
-    if (!timerMs) { el('vBar').style.width = '0'; return; }
-    var p = barFraction();
-    el('vBar').style.width = (p * 100) + '%';
-    if (p >= 1 && barTimer) { clearInterval(barTimer); barTimer = null; }
+    if (!timerMs) return;   // frozen (pause) or none — keep the last paint
+    barFill = Math.min(1, barBase + (1 - barBase) * ((Date.now() - timerStart) / timerMs));
+    el('vBar').style.width = (barFill * 100) + '%';
+    if (barFill >= 1 && barTimer) { clearInterval(barTimer); barTimer = null; }
   }
   function startBar(remainingMs, fromFraction) {
     barBase = Math.min(0.995, Math.max(0, fromFraction));
@@ -453,6 +457,16 @@ window.onerror = function (msg, src, line) {
     if (barTimer) clearInterval(barTimer);
     barTimer = setInterval(tick, 200);
     tick();
+  }
+  // Freeze in place (pause/ruku): stop animating but keep the painted fill.
+  function freezeBar() {
+    if (barTimer) { clearInterval(barTimer); barTimer = null; }
+    timerMs = 0;
+  }
+  function clearBar() {
+    freezeBar();
+    barFill = 0; barBase = 0;
+    el('vBar').style.width = '0';
   }
 
   var lastVerseKey = '';
@@ -466,7 +480,9 @@ window.onerror = function (msg, src, line) {
     // untouched, so karaoke indexes are unaffected.
     var shown = tk ? (v.arabic || '') : String(v.arabic || '').replace(AR_MARKS_RE, '');
     verseKey = verseKey + (tk ? ':t' : ':p');
-    var karaoke = v.mode === 'LOCKED' && v.totalWords > 0 && shown;
+    // No karaoke in Practice: nothing advances the word position there, so
+    // the verse would sit dimmed with the first word gold forever.
+    var karaoke = v.mode === 'LOCKED' && mode !== 'practice' && v.totalWords > 0 && shown;
     if (!karaoke) {
       if (ar.dataset.k !== 'p' + verseKey) {
         ar.textContent = shown;
@@ -497,14 +513,14 @@ window.onerror = function (msg, src, line) {
     kIdx = idx;
   }
 
-  // Remember the bar fill of the ayah we just left. A surah-complete flash or
-  // a back-correct can clear/flip the verse and re-show the SAME ayah moments
-  // later — restarting its bar from zero read as "the timer reset twice".
-  var barMemo = { key: '', frac: 0, at: 0 };
+  // Remember each recently-left ayah's bar fill (a map, not one slot: a prev/
+  // next flip A→B→A must not let B's stash destroy A's). A surah-complete
+  // flash or a back-correct can re-show the SAME ayah moments later —
+  // restarting its bar from zero read as "the timer reset twice".
+  var barMemos = {};
   function memoBar() {
-    if (lastVerseKey && timerMs) {
-      barMemo = { key: lastVerseKey, frac: barFraction(), at: Date.now() };
-    }
+    if (barKey && barFill > 0) barMemos[barKey] = { fill: barFill, at: Date.now() };
+    for (var k in barMemos) { if (Date.now() - barMemos[k].at > 6000) delete barMemos[k]; }
   }
 
   function showVerse(v) {
@@ -512,8 +528,7 @@ window.onerror = function (msg, src, line) {
       memoBar();
       el('verseBody').style.display = 'none';
       el('verseEmpty').style.display = '';
-      el('vBar').style.width = '0'; timerMs = 0; barBase = 0; lastVerseKey = '';
-      if (barTimer) { clearInterval(barTimer); barTimer = null; }
+      clearBar(); barKey = ''; lastVerseKey = '';
       return;
     }
     el('verseEmpty').style.display = 'none';
@@ -527,23 +542,40 @@ window.onerror = function (msg, src, line) {
     el('vTr').textContent = v.translation || '';
     var verseKey = v.surah + ':' + v.ayah;
     if (v.timerMs) {
-      if (verseKey !== lastVerseKey) {
-        memoBar();
-        // New ayah — fresh sweep from empty; but if this exact ayah was on
-        // screen moments ago (completion flash, back-correct ping-pong),
-        // continue from where its bar stood instead of restarting.
-        var resumeFrac = (barMemo.key === verseKey && Date.now() - barMemo.at < 6000)
-          ? barMemo.frac : 0;
-        startBar(v.timerMs, resumeFrac);
+      if (barKey !== verseKey) {
+        memoBar();   // stash the outgoing ayah's fill before switching
+        // New bar for this ayah — fresh sweep from empty; but if this exact
+        // ayah was on screen moments ago (completion flash, back-correct
+        // ping-pong), continue from where its bar stood. A remembered fill
+        // at ~full is NOT resumed — a genuine re-recitation starts fresh.
+        var memo = barMemos[verseKey];
+        var resumeFill = (memo && Date.now() - memo.at < 6000 && memo.fill < 0.95)
+          ? memo.fill : 0;
+        startBar(v.timerMs, resumeFill);
+        barKey = verseKey;
       } else {
         // Same ayah: re-sync only when the backend's remaining genuinely
-        // disagrees with the running animation (re-phase, pace nudge), and
-        // continue forward from the current fill — never jump back.
-        var projRemaining = timerMs > 0 ? Math.max(0, (1 - barFraction()) /
+        // disagrees with the running animation (re-phase, pace nudge, resume
+        // after a pause-freeze), continuing forward from the current fill —
+        // never jumping back.
+        var projRemaining = timerMs > 0 ? Math.max(0, (1 - barFill) /
           ((1 - barBase) || 1) * timerMs) : 0;
         if (!barTimer || Math.abs(projRemaining - v.timerMs) > 900) {
-          startBar(v.timerMs, barFraction());
+          startBar(v.timerMs, barFill);
         }
+      }
+    } else {
+      // No timer armed for this ayah right now. The backend emits a new
+      // ayah's first state BEFORE scheduling its timer — show it empty and
+      // let the timer-carrying heartbeat start the sweep. For the ayah the
+      // bar already belongs to (pause/ruku, practice), freeze in place
+      // instead of letting the old animation keep running through the pause.
+      if (barKey !== verseKey) {
+        memoBar();
+        clearBar();
+        barKey = verseKey;
+      } else if (barTimer) {
+        freezeBar();
       }
     }
     lastVerseKey = verseKey;
@@ -613,9 +645,11 @@ window.onerror = function (msg, src, line) {
   [].forEach.call(document.querySelectorAll('#onlys .btn'), function (b) {
     b.onclick = function () { only = parseInt(b.dataset.only, 10); paint(); pushConfig(); };
   });
+  var tkTouchedAt = 0;
   [].forEach.call(document.querySelectorAll('#tks .btn'), function (b) {
     b.onclick = function () {
       tk = parseInt(b.dataset.tk, 10);
+      tkTouchedAt = Date.now();
       paint(); pushConfig();
       // Repaint the visible surfaces immediately with the new preference.
       if (lastShown && lastShown.ayah) showVerse(lastShown.ayah);
@@ -637,7 +671,10 @@ window.onerror = function (msg, src, line) {
     if (typeof s.lang === 'string') el('lang').value = s.lang;
     if (typeof s.surah === 'number') el('surah').value = String(s.surah);
     if (typeof s.onlySurah === 'boolean') only = s.onlySurah ? 1 : 0;
-    if (typeof s.tashkeel === 'boolean') tk = s.tashkeel ? 1 : 0;
+    // Status pushes arrive at ~7 Hz while locked; one already in flight when
+    // the user taps the toggle would flip it back for a frame. Ignore the
+    // echo briefly after a local tap.
+    if (typeof s.tashkeel === 'boolean' && Date.now() - tkTouchedAt > 1500) tk = s.tashkeel ? 1 : 0;
     if (s.hasKey && !el('key').value) el('key').placeholder = 'key saved — type to replace';
     if (s.version) el('ver').textContent = 'v' + s.version;
 

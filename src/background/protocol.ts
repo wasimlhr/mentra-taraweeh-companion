@@ -83,14 +83,22 @@ export function parseServerMessage(data: unknown): Record<string, any> | null {
 export function validAudioChunk(chunk: unknown): chunk is { data: string; format?: unknown; sampleRate?: unknown } {
   if (!chunk || typeof chunk !== 'object') return false;
   const value = chunk as any;
-  const data = value.data;
   if (value.format && !/pcm/i.test(String(value.format))) return false;
   if (value.channels != null && value.channels !== 1) return false;
-  if (typeof data !== 'string' || !data.length || data.length % 4 !== 0
+  let data = value.data;
+  if (typeof data !== 'string' || !data.length) return false;
+  // Bridges differ in base64 dialect: accept URL-safe and unpadded variants
+  // by normalizing to standard padded base64 (written back so the backend
+  // receives the canonical form).
+  if (/[-_]/.test(data)) data = data.replace(/-/g, '+').replace(/_/g, '/');
+  if (data.length % 4 !== 0) data += '='.repeat(4 - (data.length % 4));
+  if (data.length % 4 !== 0
     || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)) return false;
   const padding = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;
   const bytes = data.length / 4 * 3 - padding;
-  return bytes <= MAX_AUDIO_BYTES && bytes % 2 === 0;
+  if (bytes > MAX_AUDIO_BYTES || bytes % 2 !== 0) return false;
+  value.data = data;
+  return true;
 }
 
 export function createFixedWindowLimiter(limit: number, windowMs: number, now = () => Date.now()) {

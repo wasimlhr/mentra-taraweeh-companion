@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.3.4 - 2026-08-26
+
+Audited release — a line-by-line review of every change since the on-device
+fixes, verified against a bridge-shim harness replaying the backend's real
+message cadence (including the emit-before-schedule order and PAUSED states):
+~5 minutes of randomized stress with zero bar violations and zero JS errors.
+
+- **The timer bar no longer pins at ~100% from the second ayah onward.**
+  The backend emits a new ayah's first state BEFORE arming its timer; the
+  timerless transition landed the fresh timer in the same-ayah branch
+  seeded with the previous ayah's completed fill. The bar now tracks which
+  ayah it belongs to (`barKey`): a timerless new ayah shows empty and the
+  timer-carrying heartbeat starts the sweep from zero.
+- **The bar freezes during pause/ruku instead of running through it**, and
+  resumes from the frozen fill.
+- **A prev/next flip (A→B→A) continues A's bar** — the reappear-memo is a
+  small map now, so B's stash no longer destroys A's; a remembered fill at
+  ~full is not resumed (a genuine re-recitation starts fresh).
+- **Practice mode shows plain Arabic** — karaoke is disabled there
+  (nothing advances the word position, so the verse sat dimmed with the
+  first word gold forever).
+- **Rate limits no longer masquerade as key errors**: model failures are
+  classified (rate limit / key / other) instead of always saying "check
+  your API key".
+- The tashkeel toggle ignores in-flight status echoes briefly so it can't
+  visibly revert; mic frames in URL-safe or unpadded base64 are normalized
+  instead of dropped.
+
 ## 3.3.3 - 2026-08-26
 
 - **A re-shown ayah continues its timer bar instead of restarting.** A

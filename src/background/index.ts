@@ -26,7 +26,7 @@ import {
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.3.3';
+const VERSION = '3.3.4';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -326,9 +326,19 @@ registerMiniapp((session: any) => {
         console.log('[Taraweeh] backend error code:', typeof msg.code === 'string' ? msg.code : 'UNKNOWN');
         show('Problem', publicErrorText(msg));
       } else if (msg.type === 'sys_status' && msg.component === 'model' && msg.status === 'error') {
-        // Surface a bad or missing key rather than sitting on "Searching…".
-        setStatus('Transcription error — check the key', 'err');
-        show('Check your API key', 'Transcription failed. Update the key in the phone tile.');
+        // Surface the actual failure class — a Groq free-tier 429 mid-Taraweeh
+        // used to tell the reciter to fix a key that works.
+        const detail = typeof msg.message === 'string' ? msg.message : '';
+        if (/rate|429|quota|limit|concurren/i.test(detail)) {
+          setStatus('Rate limit reached — it resumes on its own', 'err');
+          show('Rate limit reached', 'The transcription engine is throttling. Keep reciting — it recovers by itself.');
+        } else if (/401|403|key|auth|invalid/i.test(detail) || !detail) {
+          setStatus('Transcription error — check the key', 'err');
+          show('Check your API key', 'Transcription failed. Update the key in the phone tile.');
+        } else {
+          setStatus('Transcription error', 'err');
+          show('Transcription error', detail.slice(0, 120));
+        }
       }
     };
 

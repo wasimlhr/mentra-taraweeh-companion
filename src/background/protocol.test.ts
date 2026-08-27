@@ -47,6 +47,13 @@ describe('secured backend protocol', () => {
     expect(validAudioChunk({ data: 'AAAAAA==', channels: 2 })).toBe(false);
     expect(validAudioChunk({ data: 'not base64!' })).toBe(false);
     expect(validAudioChunk({ data: 'A'.repeat(256 * 1024 + 4) })).toBe(false);
+    // Bridge base64 dialects: URL-safe and unpadded are normalized in place
+    const urlSafe = { data: '-_-_AA==' };
+    expect(validAudioChunk(urlSafe)).toBe(true);
+    expect(urlSafe.data).toBe('+/+/AA==');
+    const unpadded = { data: 'AAAAAA' };
+    expect(validAudioChunk(unpadded)).toBe(true);
+    expect(unpadded.data).toBe('AAAAAA==');
   });
 
   test('enforces and resets the audio message-rate ceiling', () => {
