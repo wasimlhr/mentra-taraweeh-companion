@@ -26,7 +26,7 @@ import {
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.3.0';
+const VERSION = '3.3.1';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -54,6 +54,7 @@ registerMiniapp((session: any) => {
   let lang = '';
   let surah = 0;          // Practice: which surah
   let onlySurah = true;   // Practice: pin the search to it rather than bias
+  let tashkeel = true;    // Quranic marks on the tile's Arabic text + heard line
   let statusText = 'Starting…';
   let statusKind = '';
   let lastVerse = '';
@@ -88,6 +89,7 @@ registerMiniapp((session: any) => {
         lang,
         surah,
         onlySurah,
+        tashkeel,
         version: VERSION,
         hasKey: !!apiKey,
         text: statusText,
@@ -210,6 +212,7 @@ registerMiniapp((session: any) => {
     match = {
       audioSec: msg.audioSec || 0,
       heard: msg.whisperText || '',
+      heardMarked: typeof msg.whisperTextMarked === 'string' ? msg.whisperTextMarked : '',
       preamble: msg.preamble === 'istiadhah' || msg.preamble === 'bismillah' ? msg.preamble : '',
       candidates: (msg.candidates || []).slice(0, 3),
       wins: msg.lockProgress?.wins || 0,
@@ -485,6 +488,7 @@ registerMiniapp((session: any) => {
     if (typeof cfg?.lang === 'string') lang = cfg.lang;
     if (typeof cfg?.surah === 'number') surah = cfg.surah;
     if (typeof cfg?.onlySurah === 'boolean') onlySurah = cfg.onlySurah;
+    if (typeof cfg?.tashkeel === 'boolean') tashkeel = cfg.tashkeel;
     // An empty key means "unchanged" — the tile cannot read back what is
     // stored, so it must not be able to blank it by saving other settings.
     if (typeof cfg?.apiKey === 'string' && cfg.apiKey.trim()) apiKey = cfg.apiKey.trim();
@@ -494,6 +498,7 @@ registerMiniapp((session: any) => {
       await session.storage.set('lang', lang);
       await session.storage.set('surah', String(surah));
       await session.storage.set('onlySurah', onlySurah ? '1' : '0');
+      await session.storage.set('tashkeel', tashkeel ? '1' : '0');
       if (apiKey) await session.storage.set('apiKey', apiKey);
       // Read straight back: a silent no-op write is the failure mode that looks
       // exactly like "the key did not save".
@@ -543,7 +548,7 @@ registerMiniapp((session: any) => {
   // temple tap saw no key yet and wrongly reported "API key needed".
   (async () => {
     try {
-      const [p, k, md, pc, lg, sr, os] = await Promise.all([
+      const [p, k, md, pc, lg, sr, os, tkv] = await Promise.all([
         session.storage.get('provider'),
         session.storage.get('apiKey'),
         session.storage.get('mode'),
@@ -551,6 +556,7 @@ registerMiniapp((session: any) => {
         session.storage.get('lang'),
         session.storage.get('surah'),
         session.storage.get('onlySurah'),
+        session.storage.get('tashkeel'),
       ]);
       if (p === 'openai' || p === 'groq') provider = p;
       if (md === 'practice' || md === 'taraweeh') mode = md;
@@ -558,6 +564,7 @@ registerMiniapp((session: any) => {
       if (typeof lg === 'string') lang = lg;
       if (sr) surah = parseInt(sr, 10) || 0;
       if (os !== null && os !== undefined) onlySurah = os === '1';
+      if (tkv !== null && tkv !== undefined) tashkeel = tkv === '1';
       if (k) apiKey = k;
       console.log('[Taraweeh] restore: provider=' + provider + ' mode=' + mode +
         ' pace=' + pace + ' key=' + (apiKey ? apiKey.length + ' chars' : 'NONE'));

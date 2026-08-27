@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@mentra/miniapp-cli/schema/miniapp.schema.json",
   "packageName": "com.wasimlhr.taraweeh",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "name": "Taraweeh Companion",
   "description": "Follows live Quran recitation and shows the ayah on your glasses.",
   "icon": "icon.png",

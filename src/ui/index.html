@@ -27,7 +27,9 @@
   --bc-1:#FFFFFF; --bc-2:#F4F4F5; --bc-3:#e2e2e2; --bc-4:#d9d9dd;
   --bc-accent:#FEF991;
   --font:"FK Grotesk Neue","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --font-ar:"Amiri","Traditional Arabic",serif;
+  /* Fallbacks with full harakat/mark support on iOS (Geeza Pro) and Android
+     (Noto Naskh Arabic), in case the bundled Amiri subset misses a glyph. */
+  --font-ar:"Amiri","Noto Naskh Arabic","Geeza Pro","Traditional Arabic",serif;
   --r:12px;
   color-scheme: light;
 }
@@ -367,6 +369,14 @@ details[open] > summary::before { content:'\25BE  '; }
       </select>
     </div>
     <div class="row">
+      <span class="lbl">Quranic marks (tashkeel)</span>
+      <div class="grp" id="tks">
+        <button class="btn" data-tk="1">Full marks</button>
+        <button class="btn" data-tk="0">Plain text</button>
+      </div>
+      <span class="hint">Madd, zabar, zer and the other marks on the verse text — and on the heard line for recognized words.</span>
+    </div>
+    <div class="row">
       <span class="lbl">Glasses gestures</span>
       <span class="hint">Single tap &mdash; start / stop &middot; Swipe up / down &mdash; prev / next ayah &middot; Long press &mdash; stop</span>
     </div>
@@ -382,8 +392,9 @@ window.onerror = function (msg, src, line) {
 (function () {
   var m = window.mentra;
   var el = function (id) { return document.getElementById(id); };
-  var provider = 'groq', mode = 'taraweeh', pace = 'follow', only = 1;
+  var provider = 'groq', mode = 'taraweeh', pace = 'follow', only = 1, tk = 1;
   var timerStart = 0, timerMs = 0, raf = null;
+  var AR_MARKS_RE = /[\u064B-\u065F\u0670\u06D6-\u06ED]/g;
 
   var ENGINE = {
     groq:   { note:'Fastest (~350ms), word timings.', link:'https://console.groq.com/keys', ph:'gsk_… Groq key' },
@@ -399,7 +410,7 @@ window.onerror = function (msg, src, line) {
   }
   function paint() {
     mark('#provs .btn','p',provider); mark('#modes .btn','m',mode); mark('#paces .btn','pace',pace);
-    mark('#onlys .btn','only',String(only));
+    mark('#onlys .btn','only',String(only)); mark('#tks .btn','tk',String(tk));
     var picked = el('surah').value !== '0';
     el('onlys').style.display = picked ? '' : 'none';
     el('onlyHint').textContent = !picked
@@ -436,17 +447,21 @@ window.onerror = function (msg, src, line) {
   // display text's tokenization, so the index maps fractionally.
   function renderAr(v, verseKey) {
     var ar = el('vAr');
-    var karaoke = v.mode === 'LOCKED' && v.totalWords > 0 && v.arabic;
+    // Marks toggle: strip combining marks for display only — word count is
+    // untouched, so karaoke indexes are unaffected.
+    var shown = tk ? (v.arabic || '') : String(v.arabic || '').replace(AR_MARKS_RE, '');
+    verseKey = verseKey + (tk ? ':t' : ':p');
+    var karaoke = v.mode === 'LOCKED' && v.totalWords > 0 && shown;
     if (!karaoke) {
       if (ar.dataset.k !== 'p' + verseKey) {
-        ar.textContent = v.arabic || '';
+        ar.textContent = shown;
         ar.dataset.k = 'p' + verseKey; kCount = 0; kIdx = -1;
       }
       return;
     }
     if (ar.dataset.k !== verseKey) {
       ar.textContent = '';
-      var ws = String(v.arabic).split(/\s+/).filter(Boolean);
+      var ws = shown.split(/\s+/).filter(Boolean);
       for (var i = 0; i < ws.length; i++) {
         var s = document.createElement('span');
         s.className = 'k-word'; s.textContent = ws[i];
@@ -501,7 +516,9 @@ window.onerror = function (msg, src, line) {
     el('sWins').textContent = s.preamble
       ? (s.preamble === 'istiadhah' ? "A'udhu billah ✓" : 'Bismillah ✓')
       : 'Lock ' + (s.wins || 0) + '/' + (s.winsRequired || 2);
-    el('sHeard').textContent = s.heard || '';
+    // Recognized words arrive diacritized from the corpus; unrecognized ones
+    // stay exactly as Whisper wrote them.
+    el('sHeard').textContent = (tk && s.heardMarked) ? s.heardMarked : (s.heard || '');
     var candRoot = el('sCands');
     candRoot.textContent = '';
     var candidates = (s.candidates || []).slice(0, 3);
@@ -534,7 +551,8 @@ window.onerror = function (msg, src, line) {
     var payload = {
       provider: provider, mode: mode, lang: el('lang').value,
       surah: parseInt(el('surah').value, 10) || 0,
-      onlySurah: !!only
+      onlySurah: !!only,
+      tashkeel: !!tk
     };
     var typed = el('key').value.trim();
     if (includeKey && typed) payload.apiKey = typed;
@@ -555,6 +573,15 @@ window.onerror = function (msg, src, line) {
   [].forEach.call(document.querySelectorAll('#onlys .btn'), function (b) {
     b.onclick = function () { only = parseInt(b.dataset.only, 10); paint(); pushConfig(); };
   });
+  [].forEach.call(document.querySelectorAll('#tks .btn'), function (b) {
+    b.onclick = function () {
+      tk = parseInt(b.dataset.tk, 10);
+      paint(); pushConfig();
+      // Repaint the visible surfaces immediately with the new preference.
+      if (lastShown && lastShown.ayah) showVerse(lastShown.ayah);
+      if (lastShown && lastShown.match) showSearch(lastShown.match);
+    };
+  });
   el('save').onclick = function () {
     pushConfig(true);
     el('saveHint').textContent = 'Saved';
@@ -562,6 +589,7 @@ window.onerror = function (msg, src, line) {
   };
   el('go').onclick = function () { m.send('control', { action:'toggle' }); };
 
+  var lastShown = { ayah: null, match: null };
   m.on('status', function (s) {
     if (s.provider) provider = s.provider;
     if (s.mode) mode = s.mode;
@@ -569,6 +597,7 @@ window.onerror = function (msg, src, line) {
     if (typeof s.lang === 'string') el('lang').value = s.lang;
     if (typeof s.surah === 'number') el('surah').value = String(s.surah);
     if (typeof s.onlySurah === 'boolean') only = s.onlySurah ? 1 : 0;
+    if (typeof s.tashkeel === 'boolean') tk = s.tashkeel ? 1 : 0;
     if (s.hasKey && !el('key').value) el('key').placeholder = 'key saved — type to replace';
     if (s.version) el('ver').textContent = 'v' + s.version;
 
@@ -581,8 +610,10 @@ window.onerror = function (msg, src, line) {
     el('go').textContent = s.listening ? 'Stop Listening' : 'Start Listening';
     el('go').classList.toggle('on', !!s.listening);
 
-    showVerse(s.ayah);
-    showSearch(s.listening ? (s.match || null) : null);
+    lastShown.ayah = s.ayah || null;
+    lastShown.match = s.listening ? (s.match || null) : null;
+    showVerse(lastShown.ayah);
+    showSearch(lastShown.match);
     paint();
   });
 

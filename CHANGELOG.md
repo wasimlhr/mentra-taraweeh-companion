@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.3.1 - 2026-08-26
+
+- **The heard line shows real Quranic marks.** Whisper output is always
+  bare; the backend now maps recognized words to their diacritized corpus
+  spelling and the tile prefers that version. Unrecognized words stay
+  exactly as Whisper wrote them. A recognized isti'adhah/bismillah shows
+  the fully vocalized phrase.
+- **Settings → Quranic marks (tashkeel), on by default.** "Plain text"
+  strips the combining marks from the verse card and the heard line for
+  display only; word count is untouched so the karaoke highlight is
+  unaffected. Persisted like every other setting.
+- The Arabic font stack gains full-mark system fallbacks (Noto Naskh
+  Arabic, Geeza Pro) in case the bundled Amiri subset misses a glyph.
+
 ## 3.3.0 - 2026-08-26
 
 - **Karaoke word tracking in the tile's Arabic text.** Recited words render
