@@ -393,7 +393,7 @@ window.onerror = function (msg, src, line) {
   var m = window.mentra;
   var el = function (id) { return document.getElementById(id); };
   var provider = 'groq', mode = 'taraweeh', pace = 'follow', only = 1, tk = 1;
-  var timerStart = 0, timerMs = 0, raf = null;
+  var timerStart = 0, timerMs = 0, barBase = 0, barTimer = null;
   var AR_MARKS_RE = /[\u064B-\u065F\u0670\u06D6-\u06ED]/g;
 
   var ENGINE = {
@@ -431,13 +431,28 @@ window.onerror = function (msg, src, line) {
 
   if (!m) { el('tSvc').textContent = 'Not in MentraOS'; paint(); return; }
 
-  // Animate the ayah timer locally: the backend pushes a duration, not ticks,
-  // so driving it here keeps the bar smooth without extra bridge traffic.
+  // Animate the ayah timer locally: the backend pushes a remaining duration,
+  // not ticks. The bar CONTINUES from its current fill (barBase) toward 100%
+  // over that remaining time — restarting the fraction from zero on every
+  // 500ms state heartbeat made the bar pulse in tiny fills, roughly once per
+  // word at normal pace, instead of sweeping the ayah once. An interval, not
+  // requestAnimationFrame: rAF starves in backgrounded/dimmed WebViews.
+  function barFraction() {
+    if (!timerMs) return 0;
+    return Math.min(1, barBase + (1 - barBase) * ((Date.now() - timerStart) / timerMs));
+  }
   function tick() {
     if (!timerMs) { el('vBar').style.width = '0'; return; }
-    var p = Math.min(1, (Date.now() - timerStart) / timerMs);
+    var p = barFraction();
     el('vBar').style.width = (p * 100) + '%';
-    if (p < 1) raf = requestAnimationFrame(tick);
+    if (p >= 1 && barTimer) { clearInterval(barTimer); barTimer = null; }
+  }
+  function startBar(remainingMs, fromFraction) {
+    barBase = Math.min(0.995, Math.max(0, fromFraction));
+    timerMs = remainingMs; timerStart = Date.now();
+    if (barTimer) clearInterval(barTimer);
+    barTimer = setInterval(tick, 200);
+    tick();
   }
 
   var lastVerseKey = '';
@@ -486,7 +501,8 @@ window.onerror = function (msg, src, line) {
     if (!v) {
       el('verseBody').style.display = 'none';
       el('verseEmpty').style.display = '';
-      el('vBar').style.width = '0'; timerMs = 0; lastVerseKey = '';
+      el('vBar').style.width = '0'; timerMs = 0; barBase = 0; lastVerseKey = '';
+      if (barTimer) { clearInterval(barTimer); barTimer = null; }
       return;
     }
     el('verseEmpty').style.display = 'none';
@@ -498,13 +514,21 @@ window.onerror = function (msg, src, line) {
     renderAr(v, v.surah + ':' + v.ayah);
     el('vTl').textContent = v.transliteration || '';
     el('vTr').textContent = v.translation || '';
-    // Restart the bar when the ayah changes too — two consecutive ayahs with
-    // an equal duration used to leave the bar frozen at 100%.
     var verseKey = v.surah + ':' + v.ayah;
-    if (v.timerMs && (v.timerMs !== timerMs || verseKey !== lastVerseKey)) {
-      timerMs = v.timerMs; timerStart = Date.now();
-      if (raf) cancelAnimationFrame(raf);
-      tick();
+    if (v.timerMs) {
+      if (verseKey !== lastVerseKey) {
+        // New ayah — fresh sweep from empty.
+        startBar(v.timerMs, 0);
+      } else {
+        // Same ayah: re-sync only when the backend's remaining genuinely
+        // disagrees with the running animation (re-phase, pace nudge), and
+        // continue forward from the current fill — never jump back.
+        var projRemaining = timerMs > 0 ? Math.max(0, (1 - barFraction()) /
+          ((1 - barBase) || 1) * timerMs) : 0;
+        if (!barTimer || Math.abs(projRemaining - v.timerMs) > 900) {
+          startBar(v.timerMs, barFraction());
+        }
+      }
     }
     lastVerseKey = verseKey;
   }

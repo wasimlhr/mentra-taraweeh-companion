@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.3.2 - 2026-08-26
+
+- **The ayah timer bar sweeps once per ayah again.** The bar restarted its
+  animation fraction from zero on every 500 ms state heartbeat (each
+  carries a fresh *remaining* duration), so it pulsed in tiny fills —
+  roughly once per word at normal pace, which read as "every word gets its
+  own timer" once the karaoke highlight drew the eye there. The bar now
+  CONTINUES from its current fill toward 100 % over the pushed remaining
+  time, re-syncs only when the backend genuinely disagrees with the
+  running animation (re-phase, pace nudge), never jumps backward within an
+  ayah, and resets exactly once on an ayah change. Driven by an interval
+  instead of requestAnimationFrame, which starves in dimmed WebViews.
+  Verified in a bridge-shim harness: monotonic 0→50 % over half an 8 s
+  ayah under heartbeats + word pushes, zero backward drops, single clean
+  reset on ayah change.
+
 ## 3.3.1 - 2026-08-26
 
 - **The heard line shows real Quranic marks.** Whisper output is always
