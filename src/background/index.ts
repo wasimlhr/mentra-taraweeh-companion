@@ -26,7 +26,7 @@ import {
 const BACKEND = 'wss://taraweeh-companion-g2-production-150e.up.railway.app/ws';
 
 /** Shown in the tile so a stale install is obvious. Matches miniapp.json. */
-const VERSION = '3.3.4';
+const VERSION = '3.3.5';
 
 /** The engine expects 16 kHz mono signed 16-bit PCM. */
 const EXPECTED_SAMPLE_RATE = 16000;
@@ -55,6 +55,13 @@ registerMiniapp((session: any) => {
   let surah = 0;          // Practice: which surah
   let onlySurah = true;   // Practice: pin the search to it rather than bias
   let tashkeel = true;    // Quranic marks on the tile's Arabic text + heard line
+  // Client-carried position recovery: the backend pushes recovery_state once
+  // per ayah change; we persist it and echo it on init so a reconnect or a
+  // backend redeploy resumes at the same ayah instead of a cold search.
+  let recoveryState: Json | null = null;
+  // Stable per-install id: lets the backend close a stale zombie socket when
+  // this install reconnects without having closed the old one.
+  let sessionId = '';
   let statusText = 'Starting…';
   let statusKind = '';
   let lastVerse = '';
@@ -239,6 +246,8 @@ registerMiniapp((session: any) => {
       type: 'init',
       audioSource: 'g2',
       pipelineVersion: 'v4',
+      sessionId: sessionId || undefined,
+      recoveryState: recoveryState || undefined,
       mode,
       taraweehMode: mode === 'taraweeh',
       practiceMode: mode === 'practice',
@@ -321,6 +330,19 @@ registerMiniapp((session: any) => {
           verse.wordIndex = msg.wordIndex;
           verse.totalWords = msg.totalWords;
           pushStatus();
+        }
+      } else if (msg.type === 'recovery_state') {
+        // Arrives once per ayah change (server-throttled). Store only the four
+        // expected numeric fields — never persist an arbitrary payload.
+        const rs = msg.state;
+        if (rs && typeof rs.surah === 'number' && typeof rs.ayah === 'number' && rs.surah >= 1 && rs.ayah >= 1) {
+          recoveryState = {
+            surah: rs.surah,
+            ayah: rs.ayah,
+            pace: typeof rs.pace === 'number' ? rs.pace : 0,
+            ts: typeof rs.ts === 'number' ? rs.ts : Date.now(),
+          };
+          session.storage.set('recovery', JSON.stringify(recoveryState)).catch(() => {});
         }
       } else if (msg.type === 'error') {
         console.log('[Taraweeh] backend error code:', typeof msg.code === 'string' ? msg.code : 'UNKNOWN');
@@ -558,7 +580,7 @@ registerMiniapp((session: any) => {
   // temple tap saw no key yet and wrongly reported "API key needed".
   (async () => {
     try {
-      const [p, k, md, pc, lg, sr, os, tkv] = await Promise.all([
+      const [p, k, md, pc, lg, sr, os, tkv, rec, sid] = await Promise.all([
         session.storage.get('provider'),
         session.storage.get('apiKey'),
         session.storage.get('mode'),
@@ -567,6 +589,8 @@ registerMiniapp((session: any) => {
         session.storage.get('surah'),
         session.storage.get('onlySurah'),
         session.storage.get('tashkeel'),
+        session.storage.get('recovery'),
+        session.storage.get('sid'),
       ]);
       if (p === 'openai' || p === 'groq') provider = p;
       if (md === 'practice' || md === 'taraweeh') mode = md;
@@ -576,6 +600,18 @@ registerMiniapp((session: any) => {
       if (os !== null && os !== undefined) onlySurah = os === '1';
       if (tkv !== null && tkv !== undefined) tashkeel = tkv === '1';
       if (k) apiKey = k;
+      if (rec) {
+        try {
+          const parsed = JSON.parse(rec);
+          if (parsed && typeof parsed.surah === 'number' && typeof parsed.ayah === 'number') recoveryState = parsed;
+        } catch {}
+      }
+      if (typeof sid === 'string' && sid) {
+        sessionId = sid;
+      } else {
+        sessionId = 'mentra-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+        session.storage.set('sid', sessionId).catch(() => {});
+      }
       console.log('[Taraweeh] restore: provider=' + provider + ' mode=' + mode +
         ' pace=' + pace + ' key=' + (apiKey ? apiKey.length + ' chars' : 'NONE'));
     } catch (e) {

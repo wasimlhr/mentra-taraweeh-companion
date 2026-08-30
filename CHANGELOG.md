@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.3.5 - 2026-08-30
+
+- Position recovery survives reconnects and backend redeploys: the tile now stores the backend's ecovery_state (pushed once per ayah) and echoes it on init, resuming at the same ayah instead of a cold search.
+- Stable per-install session id lets the backend close a stale zombie socket when this install reconnects.
+- Matching backend 3.3.5: HF endpoint wiring removed, provider deadlines cover response bodies, client-carried recovery validated with real ayah existence.
+
 ## 3.3.4 - 2026-08-26
 
 Audited release — a line-by-line review of every change since the on-device
